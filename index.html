@@ -39,17 +39,17 @@
     display:flex;
     align-items:center;
     justify-content:space-between;
-    flex-wrap:wrap;
+    flex-wrap:nowrap;
     gap:10px;
     position:sticky;
     top:0;
     z-index:200;
   }
-  .app-header-left{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;}
+  .app-header-left{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0;}
   .app-header h1{font-family:var(--sans);font-size:22px;margin:0;font-weight:800;letter-spacing:.3px;}
   .app-header .sub{font-size:13px;opacity:.8;}
   .app-header .khmer{font-size:13px;opacity:.75;}
-  .app-header-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-left:auto;justify-content:flex-end;}
+  .app-header-right{display:flex;align-items:center;gap:14px;flex-wrap:nowrap;flex-shrink:0;margin-left:auto;justify-content:flex-end;}
   .menu-wrap{position:relative;}
   .menu-dropdown{
     position:absolute;top:calc(100% + 8px);right:0;
@@ -86,6 +86,7 @@
     max-width:720px;
     margin:0 auto;
     width:100%;
+    min-width:0;
     position:sticky;
     top:var(--header-h, 74px);
     height:calc(100vh - var(--header-h, 74px));
@@ -160,6 +161,8 @@
   label.first{margin-top:0;}
   input[type=text], input[type=number], textarea, select{
     width:100%;
+    max-width:100%;
+    min-width:0;
     padding:9px 11px;
     border:1px solid #cfd6d0;
     border-radius:7px;
@@ -175,6 +178,7 @@
 
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
   .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .row2 > div, .row3 > div{min-width:0;}
 
   button{
     font-family:var(--sans);
@@ -447,6 +451,15 @@
     .menu-dropdown{right:-8px;}
   }
 
+  @media (max-width:380px){
+    .app-header{padding:10px 12px;gap:6px;}
+    .app-header-right{gap:8px;}
+    .app-header h1{font-size:16px;}
+    .app-header .sub{font-size:10.5px;}
+    .btn-clear span.tg-label{display:none;}
+    .btn-clear{padding:8px 10px;}
+  }
+
   @media print{
     body *{visibility:hidden;}
     #paper, #paper *{visibility:visible;}
@@ -476,7 +489,7 @@
     <span class="khmer">សម្រាប់គ្រូបង្រៀន — បង្កើតសំណួរប្រឡង</span>
     <a href="https://t.me/samounsuon" target="_blank" rel="noopener noreferrer" class="btn-clear" title="Contact on Telegram">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M21.05 3.16 2.9 10.36c-1.24.5-1.23 1.2-.23 1.5l4.66 1.46 1.8 5.55c.22.6.37.84.76.84.35 0 .5-.16.7-.36l1.98-1.93 4.12 3.04c.76.42 1.3.2 1.5-.7l2.72-12.85c.3-1.14-.42-1.65-1.16-1.75Zm-11.85 9.42-1.26 4.06-.6-2.68 9.9-8.9-8.04 7.52Z"/></svg>
-      Telegram
+      <span class="tg-label">Telegram</span>
     </a>
     <div class="menu-wrap">
       <button id="menuToggleBtn" class="btn-clear" title="Menu" aria-label="Menu"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg> Menu</button>
