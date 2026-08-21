@@ -1,0 +1,1970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exam Builder</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --ink:#1c2b2e;
+    --paper:#ffffff;
+    --paper-line:#e4ded0;
+    --panel:#eef1ee;
+    --accent:#2f5d50;
+    --accent-dark:#1f4238;
+    --accent-soft:#dce9e2;
+    --danger:#b3452f;
+    --muted:#5c655f;
+    --radius:10px;
+    --sans: "Inter", "Segoe UI", system-ui, sans-serif;
+    --serif: "Times New Roman", Times, serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:var(--sans);
+    background:var(--panel);
+    color:var(--ink);
+  }
+
+  .app-header{
+    background:var(--accent-dark);
+    color:#fff;
+    padding:18px 28px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:10px;
+    position:sticky;
+    top:0;
+    z-index:200;
+  }
+  .app-header-left{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;}
+  .app-header h1{font-family:var(--sans);font-size:22px;margin:0;font-weight:800;letter-spacing:.3px;}
+  .app-header .sub{font-size:13px;opacity:.8;}
+  .app-header .khmer{font-size:13px;opacity:.75;}
+  .app-header-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .menu-wrap{position:relative;}
+  .menu-dropdown{
+    position:absolute;top:calc(100% + 8px);right:0;
+    background:#fff;border:1px solid #dde3de;border-radius:8px;
+    box-shadow:0 8px 22px rgba(0,0,0,.16);
+    min-width:190px;padding:6px;z-index:210;
+  }
+  .menu-dropdown.hidden{display:none;}
+  .menu-item{
+    display:flex;align-items:center;justify-content:flex-start;gap:8px;width:100%;text-align:left;background:transparent;border:none;
+    color:var(--ink);font-size:13px;font-weight:600;padding:9px 10px;border-radius:6px;
+  }
+  .menu-item:hover{background:var(--accent-soft);}
+  .menu-item-danger{color:var(--danger);}
+  .menu-item-danger:hover{background:#fbeae5;}
+  .btn-clear{
+    background:transparent;border:1px solid rgba(255,255,255,.55);color:#fff;
+    padding:8px 14px;border-radius:7px;font-size:12.5px;font-weight:700;white-space:nowrap;
+    display:inline-flex;align-items:center;gap:6px;text-decoration:none;cursor:pointer;
+  }
+  .btn-clear:hover{background:rgba(255,255,255,.14);}
+  .app-layout{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:0;
+    align-items:start;
+  }
+  @media (max-width:980px){
+    .app-layout{grid-template-columns:1fr;}
+  }
+
+  .app-panel-left{
+    padding:26px 28px;
+    max-width:720px;
+    margin:0 auto;
+    width:100%;
+    position:sticky;
+    top:var(--header-h, 74px);
+    height:calc(100vh - var(--header-h, 74px));
+    overflow-y:auto;
+  }
+  @media (max-width:980px){
+    .app-panel-left{position:static;height:auto;overflow-y:visible;}
+  }
+  .app-panel-right{
+    padding:24px;
+    position:sticky;
+    top:var(--header-h, 74px);
+    height:calc(100vh - var(--header-h, 74px));
+    overflow-y:auto;
+    overflow-x:hidden;
+    background:var(--panel);
+    border-left:1px solid #d8ddd8;
+  }
+  @media (max-width:980px){
+    .app-panel-right{position:static;height:auto;border-left:none;border-top:1px solid #d8ddd8;}
+  }
+  .page-shell{
+    width:calc(21cm * var(--page-scale, 1));
+    height:calc(29.7cm * var(--page-scale, 1));
+    margin:0 auto;
+    overflow:hidden;
+  }
+  .page-shell .page-sheet{
+    transform:scale(var(--page-scale, 1));
+    transform-origin:top left;
+  }
+  #paper.mobile-preview .page-shell{
+    width:100%; height:auto; overflow:visible; margin-bottom:18px;
+  }
+  #paper.mobile-preview .page-shell:last-child{margin-bottom:0;}
+  #paper.mobile-preview .page-sheet{
+    transform:none; width:100%; min-height:0; box-sizing:border-box;
+    padding:18px 16px;
+  }
+  #paper.mobile-preview .page-sheet .exam-title{font-size:18px;}
+  #paper.mobile-preview .page-sheet .q-item{margin-left:18px;}
+  #paper.mobile-preview .page-sheet .line-wrap{margin-left:18px;}
+  #paper.mobile-preview .page-sheet{overflow:visible;}
+  #paper.mobile-preview .blankline{width:auto !important;min-width:36px;max-width:110px;flex:1;}
+  #paper.mobile-preview table.examhead td{padding:7px 8px;font-size:12px;}
+  #paper.mobile-preview table.match-table{font-size:12.5px;}
+  #paper.mobile-preview table.match-table td{padding:5px 6px;}
+  .card{
+    background:#fff;
+    border:1px solid #dde3de;
+    border-radius:var(--radius);
+    padding:20px 22px;
+    margin-bottom:16px;
+  }
+  .card h2{
+    font-family:var(--sans);
+    font-size:15.5px;
+    margin:0 0 14px 0;
+    padding-left:10px;
+    border-left:3px solid var(--accent);
+    color:var(--accent-dark);
+    font-weight:700;
+    letter-spacing:.2px;
+  }
+  label{
+    display:block;
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--muted);
+    margin:10px 0 4px;
+  }
+  label.first{margin-top:0;}
+  input[type=text], input[type=number], textarea, select{
+    width:100%;
+    padding:9px 11px;
+    border:1px solid #cfd6d0;
+    border-radius:7px;
+    font-family:var(--sans);
+    font-size:14px;
+    line-height:1.5;
+    background:#fdfdfb;
+    color:var(--ink);
+    overflow-wrap:break-word;
+  }
+  textarea{resize:vertical;min-height:56px;overflow:hidden;}
+  input:focus, textarea:focus, select:focus{outline:2px solid var(--accent);outline-offset:1px;}
+
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+
+  button{
+    font-family:var(--sans);
+    cursor:pointer;
+    border:none;
+    border-radius:7px;
+    font-size:13.5px;
+    font-weight:600;
+    padding:9px 14px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+  }
+  button svg{flex-shrink:0;}
+  .btn-icon{display:inline-flex;align-items:center;justify-content:center;}
+  .btn-primary{background:var(--accent);color:#fff;}
+  .btn-primary:hover{background:var(--accent-dark);}
+  .btn-ghost{background:transparent;color:var(--accent-dark);border:1px solid var(--accent);}
+  .btn-ghost:hover{background:var(--accent-soft);}
+  .btn-danger{background:transparent;color:var(--danger);border:1px solid #e3c3ba;}
+  .btn-danger:hover{background:#fbeae5;}
+  .btn-small{padding:5px 9px;font-size:12px;}
+  .btn-icon{padding:5px 8px;font-size:13px;line-height:1;}
+
+  .type-picker{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:4px;
+    margin-bottom:12px;
+  }
+  .type-picker button{
+    display:block;
+    text-align:left;
+    background:#fff;
+    border:1.5px solid var(--accent);
+    color:var(--accent-dark);
+    padding:12px 12px;
+    border-radius:9px;
+  }
+  .type-picker button:hover{background:var(--accent-soft);}
+  .type-picker button .tlabel{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;}
+  .type-picker button .tdesc{display:block;font-size:11.5px;color:var(--muted);font-weight:400;margin-top:2px;}
+
+  .type-group{margin-bottom:8px;}
+  .type-group-head{
+    width:100%;display:flex;align-items:center;justify-content:space-between;
+    background:var(--accent-soft);color:var(--accent-dark);border:1px solid #cfe0d7;
+    padding:11px 14px;border-radius:9px;font-size:13.5px;font-weight:700;text-align:left;
+  }
+  .type-group-head:hover{background:#d0e3d8;}
+  .type-group-head.open{border-radius:9px 9px 0 0;}
+  .type-group-head .chev{font-size:12px;opacity:.7;}
+  .type-group .type-picker{
+    border:1px solid #cfe0d7;border-top:none;border-radius:0 0 9px 9px;
+    padding:10px;margin-top:0;
+  }
+
+  .part-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+  .part-tab{
+    display:block;
+    background:#eef1ee;color:var(--accent-dark);border:1px solid #d8ddd8;
+    padding:7px 15px;border-radius:20px;font-weight:700;font-size:13px;
+    cursor:grab;user-select:none;
+  }
+  .part-tab .pt-type{display:block;font-size:9.5px;font-weight:600;opacity:.75;margin-top:1px;}
+  .part-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .part-tab.active .pt-type{opacity:.9;}
+  .part-tab.dragging{opacity:.4;}
+  .part-tab.drag-over{outline:2px dashed var(--accent);outline-offset:2px;}
+  .part-tabs-hint{font-size:11px;color:var(--muted);margin:-8px 0 12px;}
+
+  .section-block{
+    border:1px solid #d8ddd8;
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .section-head{
+    background:var(--accent-soft);
+    padding:10px 14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+  }
+  .section-head .roman{
+    font-family:var(--sans);
+    font-weight:800;
+    font-size:15px;
+    color:var(--accent-dark);
+  }
+  .section-head .typepill{
+    font-size:11px;
+    font-weight:700;
+    background:#fff;
+    color:var(--accent-dark);
+    border-radius:20px;
+    padding:2px 9px;
+    margin-left:8px;
+  }
+  .section-body{padding:12px 14px;background:#fff;}
+  .section-actions{display:flex;gap:6px;}
+
+  .question-block{
+    border:1px solid #e4e8e3;
+    border-left:3px solid var(--accent-soft);
+    border-radius:8px;
+    padding:12px 14px;
+    margin-bottom:12px;
+    background:#fcfdfc;
+  }
+  .question-block .qhead{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    margin-bottom:8px;
+  }
+  .qnum{
+    font-weight:700;color:var(--accent-dark);font-size:13.5px;
+    flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .qnum span.qsnippet{font-weight:500;color:var(--muted);}
+  .opt-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .opt-row input[type=text]{flex:1;}
+  .opt-letter{
+    width:22px;height:22px;border-radius:5px;border:1px solid #cfd6d0;
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;
+    flex-shrink:0;color:var(--muted);
+  }
+  .match-row{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;margin-bottom:6px;}
+
+  .mini-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:4px;}
+  .note-box{background:#f6f8f6;border:1px dashed #c9d1cb;border-radius:8px;padding:8px 10px;margin-bottom:10px;}
+  .note-box label{margin-top:0;}
+  .note-box-head{display:flex;align-items:center;justify-content:flex-start;gap:10px;}
+  .btn-bold-toggle{
+    flex-shrink:0;width:26px;height:26px;padding:0;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:13px;font-family:Georgia,serif;
+    background:#fff;color:var(--muted);border:1px solid #cfd6d0;border-radius:6px;
+  }
+  .btn-bold-toggle:hover{background:var(--accent-soft);color:var(--accent-dark);}
+  .btn-bold-toggle.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+  .empty-state{
+    text-align:center;padding:26px 10px;color:var(--muted);font-size:13.5px;
+    border:1px dashed #c9d1cb;border-radius:8px;
+  }
+
+  /* ---- Preview / Paper look ---- */
+  .paper-toolbar{
+    display:flex;gap:8px;align-items:center;justify-content:space-between;
+    margin-bottom:12px;flex-wrap:wrap;
+  }
+  .tabs{display:flex;gap:6px;background:#e3e8e3;border-radius:20px;padding:3px;}
+  .tabs button{
+    background:transparent;border:none;padding:6px 14px;border-radius:16px;
+    font-size:12.5px;font-weight:700;color:var(--muted);
+  }
+  .tabs button.active{background:var(--accent);color:#fff;}
+
+  .paper{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:22px;
+  }
+  .page-banner{
+    max-width:21cm;margin:0 auto 14px;padding:9px 14px;border-radius:8px;
+    font-size:12.5px;font-weight:700;text-align:center;
+  }
+  .page-banner.multi{background:#e7eef4;color:#3a5975;border:1px solid #c9dae7;}
+  .page-banner.single{background:var(--accent-soft);color:var(--accent-dark);}
+  .page-sheet{
+    background:var(--paper);
+    border:1px solid var(--paper-line);
+    box-shadow:0 3px 14px rgba(20,30,25,.08);
+    border-radius:4px;
+    padding:2cm;
+    font-family:var(--serif);
+    color:var(--ink);
+    width:21cm;
+    min-height:29.7cm;
+    box-sizing:border-box;
+    position:relative;
+    overflow:hidden;
+    overflow-wrap:break-word;
+    word-break:break-word;
+  }
+  .page-sheet .page-number{
+    position:absolute; bottom:10px; right:16px; font-size:10.5px; color:#9aa39c;
+    font-family:var(--sans); font-weight:600;
+  }
+  .page-sheet .exam-title{font-size:20px;font-weight:700;text-align:center;margin:0 0 2px;}
+  .page-sheet .exam-sub{font-size:13px;text-align:center;color:#4c554f;margin-bottom:14px;}
+  table.examhead{width:100%;border-collapse:collapse;margin:14px 0 22px;}
+  table.examhead td{border:1px solid #333;padding:9px 12px;font-size:13px;}
+  .flabel{font-weight:700;margin-right:6px;}
+  .page-sheet hr{border:none;border-top:1px solid #cfc9b6;margin:16px 0;}
+  .page-sheet .sec-roman-line{font-weight:700;font-size:16px;margin-top:30px;margin-bottom:8px;}
+  .page-sheet .sec-note-inline{font-weight:400;font-style:normal;color:var(--ink);}
+  .page-sheet .sec-note-inline.bold{font-weight:700;}
+  .page-sheet .q-item{margin:14px 0 14px 30px;font-size:14px;line-height:1.7;}
+  .page-sheet .q-item.tight{margin-bottom:0;}
+  .page-sheet .line-wrap{margin:4px 0 0 30px;}
+  .page-sheet .line-rule{border-bottom:1px solid #444;height:20px;}
+  .page-sheet .q-item .qn{font-weight:700;margin-right:4px;}
+  .page-sheet .opt-list{margin:6px 0 0 20px;}
+  .page-sheet .opt-list div{margin:5px 0;font-size:13.5px;}
+  .page-sheet .box{display:inline-block;width:12px;height:12px;border:1px solid #444;margin-right:6px;vertical-align:middle;}
+  .page-sheet .box.checked{background:var(--accent-dark);border-color:var(--accent-dark);}
+  .page-sheet .answer-key{color:var(--accent-dark);font-weight:700;}
+  .page-sheet .blankline{display:inline-block;border-bottom:1px solid #444;}
+  .page-sheet table.match-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13.5px;}
+  .page-sheet table.match-table td{border:1px solid #333;padding:7px 10px;vertical-align:top;}
+  .page-sheet table.match-table td.left{width:48%;}
+  .page-sheet .score-tag{float:right;font-size:12px;color:#5c655f;font-weight:600;}
+  @media (max-width:860px){
+    .page-sheet{width:100%;min-height:auto;padding:20px 16px;}
+    .page-banner{max-width:100%;}
+  }
+
+  .export-bar{
+    display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;
+  }
+  .export-bar .dl-main{flex:1;min-width:170px;padding:12px 14px;font-size:14px;}
+  .dl-wrap{position:relative;flex:1;min-width:200px;}
+  .dl-main{width:100%;}
+  .dl-dropdown{
+    position:absolute;bottom:calc(100% + 8px);left:0;right:0;
+    background:#fff;border:1px solid #dde3de;border-radius:8px;
+    box-shadow:0 8px 22px rgba(0,0,0,.16);
+    padding:6px;z-index:60;
+  }
+  .dl-dropdown.hidden{display:none;}
+  .dl-dropdown .menu-item{color:var(--ink);justify-content:flex-start;}
+  .dl-dropdown .menu-item:hover{background:var(--accent-soft);color:var(--accent-dark);}
+
+  .steps-guide{
+    font-size:12.5px;color:var(--muted);line-height:1.5;margin-bottom:16px;
+    background:#fff;border:1px solid #dde3de;border-radius:8px;padding:10px 14px;
+  }
+  .steps-guide b{color:var(--accent-dark);}
+
+  ::-webkit-scrollbar{width:10px;}
+  ::-webkit-scrollbar-thumb{background:#c3ccc4;border-radius:6px;}
+
+  /* ---- Phone responsive — kept last so it wins over the base rules above
+     at equal specificity, regardless of where those rules are defined. ---- */
+  @media (max-width:640px){
+    .app-header{padding:14px 16px;}
+    .app-header h1{font-size:19px;}
+    .app-header .sub{font-size:12px;}
+    .app-header .khmer{display:none;}
+    .app-panel-left, .app-panel-right{padding:14px;}
+    .card{padding:16px 16px;}
+    .row2, .row3{grid-template-columns:1fr;}
+    .type-picker{grid-template-columns:1fr;}
+    .export-bar{flex-direction:column;}
+    .export-bar .dl-main{min-width:100%;}
+    .dl-wrap{min-width:100%;}
+    button{min-height:40px;}
+    .btn-icon{min-height:34px;min-width:34px;}
+    .part-tabs{gap:8px;}
+    .part-tab{padding:10px 15px;}
+    .section-head{flex-wrap:wrap;gap:8px;}
+    .menu-dropdown{right:-8px;}
+  }
+
+  @media print{
+    body *{visibility:hidden;}
+    #paper, #paper *{visibility:visible;}
+    #paper{position:absolute;top:0;left:0;width:100%;margin:0;padding:0;}
+    .page-shell{
+      width:21cm !important;height:auto !important;margin:0 !important;
+      page-break-after:always;
+    }
+    .page-shell:last-child{page-break-after:auto;}
+    .page-sheet{
+      transform:none !important;width:21cm !important;min-height:29.7cm !important;
+      box-shadow:none !important;border:none !important;
+    }
+    .page-sheet .page-number{display:none;}
+    @page{size:A4;margin:0;}
+  }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="app-header-left">
+    <h1>Exam Builder</h1>
+    <span class="sub">Created by Samoun</span>
+  </div>
+  <div class="app-header-right">
+    <span class="khmer">សម្រាប់គ្រូបង្រៀន — បង្កើតសំណួរប្រឡង</span>
+    <a href="https://t.me/samounsuon" target="_blank" rel="noopener noreferrer" class="btn-clear" title="Contact on Telegram">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M21.05 3.16 2.9 10.36c-1.24.5-1.23 1.2-.23 1.5l4.66 1.46 1.8 5.55c.22.6.37.84.76.84.35 0 .5-.16.7-.36l1.98-1.93 4.12 3.04c.76.42 1.3.2 1.5-.7l2.72-12.85c.3-1.14-.42-1.65-1.16-1.75Zm-11.85 9.42-1.26 4.06-.6-2.68 9.9-8.9-8.04 7.52Z"/></svg>
+      Telegram
+    </a>
+    <div class="menu-wrap">
+      <button id="menuToggleBtn" class="btn-clear" title="Menu" aria-label="Menu"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg> Menu</button>
+      <div id="menuDropdown" class="menu-dropdown hidden">
+        <button data-act="menu-guide" class="menu-item"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.3 9a2.7 2.7 0 0 1 5.2 1c0 1.8-2.5 2.2-2.5 4"/><circle cx="12" cy="17.3" r="0.9" fill="currentColor" stroke="none"/></svg> How this works</button>
+        <button id="clearQuestionsBtn" class="menu-item menu-item-danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 17H9.5l-5-5a1.8 1.8 0 0 1 0-2.6l8-8a1.8 1.8 0 0 1 2.6 0l6 6a1.8 1.8 0 0 1 0 2.6L13 18"/><line x1="6" y1="20" x2="21" y2="20"/></svg> Clear questions only</button>
+        <button id="clearDataBtn" class="menu-item menu-item-danger"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 6 5.5 6 20.5 6"/><path d="M18.5 6l-1 13a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2l-1-13"/><path d="M9.5 6V3.8a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V6"/><line x1="10" y1="10.5" x2="10" y2="16.5"/><line x1="14" y1="10.5" x2="14" y2="16.5"/></svg> Clear all data</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="app-layout">
+  <div class="app-panel app-panel-left" id="builderPane"></div>
+  <div class="app-panel app-panel-right">
+    <div class="paper-toolbar">
+      <div class="tabs" id="previewTabs">
+        <button id="tabTeacher" class="active">Teacher copy (with answers)</button>
+        <button id="tabStudent">Student copy (blank)</button>
+      </div>
+    </div>
+    <div id="pageBanner"></div>
+    <div class="paper" id="paper"></div>
+    <div class="hint" style="margin-top:10px;">This preview is now split into A4 pages, the same as the download — so you can see up front how many pages your exam will print on.</div>
+    <div class="export-bar">
+    <div class="export-bar">
+      <div class="dl-wrap">
+        <button class="btn-primary dl-main" id="dlToggleTeacher" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12.5"/><polyline points="6.5 10.5 12 16 17.5 10.5"/><line x1="4" y1="20.5" x2="20" y2="20.5"/></svg>
+          Download Teacher
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dl-dropdown hidden" id="dlMenuTeacher">
+          <button class="menu-item" data-act="dl-word" data-mode="teacher">Donload As Word (.docx)</button>
+          <button class="menu-item" data-act="dl-pdf" data-mode="teacher">Donload As PDF</button>
+        </div>
+      </div>
+      <div class="dl-wrap">
+        <button class="btn-ghost dl-main" id="dlToggleStudent" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12.5"/><polyline points="6.5 10.5 12 16 17.5 10.5"/><line x1="4" y1="20.5" x2="20" y2="20.5"/></svg>
+          Download Student
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="dl-dropdown hidden" id="dlMenuStudent">
+          <button class="menu-item" data-act="dl-word" data-mode="student">Donload As Word (.docx)</button>
+          <button class="menu-item" data-act="dl-pdf" data-mode="student">Donload As PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const TYPE_INFO = {
+    fill:    { label: "Fill in the Blank", desc: "Sentence with a blank ( ..... ) to complete" },
+    mc:      { label: "Multiple Choice",   desc: "Question with A, B, C, D choices" },
+    match:   { label: "Matching",          desc: "Match items on the left to items on the right" },
+    short:   { label: "Short Answer",      desc: "Open question with a few blank lines to write on" },
+    writing: { label: "Writing / Essay",   desc: "A prompt with ruled lines (like paper) for a longer answer" }
+  };
+  const TYPE_GROUPS = [
+    { id: "objective", label: "Short Answer / Multiple Choice / Matching", types: ["short", "mc", "match"] },
+    { id: "writing",   label: "Writing / Fill in the Blank",               types: ["writing", "fill"] }
+  ];
+  const BLANK_SIZE_OPTIONS = [10, 15, 20, 25, 30];
+
+  const ICON = {
+    menu:     `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`,
+    help:     `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.3 9a2.7 2.7 0 0 1 5.2 1c0 1.8-2.5 2.2-2.5 4"/><circle cx="12" cy="17.3" r="0.9" fill="currentColor" stroke="none"/></svg>`,
+    eraser:   `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 17H9.5l-5-5a1.8 1.8 0 0 1 0-2.6l8-8a1.8 1.8 0 0 1 2.6 0l6 6a1.8 1.8 0 0 1 0 2.6L13 18"/><line x1="6" y1="20" x2="21" y2="20"/></svg>`,
+    trash:    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 6 5.5 6 20.5 6"/><path d="M18.5 6l-1 13a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2l-1-13"/><path d="M9.5 6V3.8a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V6"/><line x1="10" y1="10.5" x2="10" y2="16.5"/><line x1="14" y1="10.5" x2="14" y2="16.5"/></svg>`,
+    up:       `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5.5 11.5 12 5 18.5 11.5"/></svg>`,
+    down:     `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="5.5 12.5 12 19 18.5 12.5"/></svg>`,
+    close:    `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+    chevDown: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
+    chevRight:`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>`,
+    chevUp:   `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`,
+    plus:     `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+    download: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12.5"/><polyline points="6.5 10.5 12 16 17.5 10.5"/><line x1="4" y1="20.5" x2="20" y2="20.5"/></svg>`
+  };
+
+
+  // ---------- State ----------
+  let state = {
+    meta: { title: "", subject: "", className: "", teacher: "", date: "", duration: "", totalScore: "" },
+    sections: []
+  };
+  let previewMode = "teacher"; // or "student"
+  let activeSectionId = null;
+  let showGuide = true;
+  let groupOpen = { objective: false, writing: false };
+  let collapsedQuestions = new Set(); // UI-only: which question editors are collapsed
+  let uid = 1;
+  function nextId(){ return "id" + (uid++); }
+  const STORAGE_KEY = "examBuilder_v1";
+
+  function saveState(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        meta: state.meta, sections: state.sections, activeSectionId
+      }));
+    }catch(e){ }
+  }
+
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return false;
+      const parsed = JSON.parse(raw);
+      if(!parsed || !Array.isArray(parsed.sections)) return false;
+      state.meta = Object.assign(
+        {title:"",subject:"",className:"",teacher:"",date:"",duration:"",totalScore:""},
+        parsed.meta || {}
+      );
+      state.sections = parsed.sections;
+      activeSectionId = parsed.activeSectionId || (state.sections[0] && state.sections[0].id) || null;
+      let maxNum = 0;
+      const scan = (obj) => {
+        if(obj && typeof obj.id === "string"){
+          const n = parseInt(obj.id.replace("id",""), 10);
+          if(!isNaN(n) && n > maxNum) maxNum = n;
+        }
+      };
+      state.sections.forEach(sec => { scan(sec); (sec.questions||[]).forEach(scan); });
+      uid = maxNum + 1;
+      return true;
+    }catch(e){ return false; }
+  }
+
+  function clearAllData(){
+    const ok = confirm("This will permanently delete all exam data saved in this browser — including the exam title, class, and every part and question. This cannot be undone. Continue?");
+    if(!ok) return;
+    try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
+    state = { meta: {title:"",subject:"",className:"",teacher:"",date:"",duration:"",totalScore:""}, sections: [] };
+    activeSectionId = null;
+    collapsedQuestions.clear();
+    uid = 1;
+    renderBuilder();
+    renderPreview();
+  }
+
+  function clearQuestionsOnly(){
+    const ok = confirm("This will delete all parts and questions, but keep your exam information (title, subject, class, teacher, date, duration, score) as it is. Continue?");
+    if(!ok) return;
+    state.sections = [];
+    activeSectionId = null;
+    collapsedQuestions.clear();
+    renderBuilder();
+    renderPreview();
+  }
+
+
+  function newQuestion(type){
+    const base = { id: nextId(), type: type, text: "", score: "" };
+    if(type === "fill"){ base.answer = ""; base.blankSize = 20; }
+    if(type === "mc"){ base.options = [ {text:"", correct:true}, {text:"", correct:false} ]; }
+    if(type === "match"){ base.pairs = [ {left:"", right:""}, {left:"", right:""} ]; base.shuffle = null; }
+    if(type === "short"){ base.answer = ""; base.lines = 3; }
+    if(type === "writing"){ base.notes = ""; base.showLines = true; base.lineCount = 12; }
+    return base;
+  }
+
+  function newSection(type){
+    return { id: nextId(), type: type, note: "", noteBold: false, questions: [] };
+  }
+
+  // ---------- Helpers ----------
+  const ROMAN = ["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII","XIII","XIV","XV"];
+  function toRoman(i){ return ROMAN[i] || (i+1)+""; }
+  function toLetter(i){ return String.fromCharCode(65+i); }
+  function blankWidthPx(chars){ return Math.max(50, chars*7); }
+
+  function escapeHtml(str){
+    return (str||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function shuffledIndices(n, seedKey){
+    let arr = [...Array(n).keys()];
+    let seed = 0;
+    for(let i=0;i<seedKey.length;i++) seed += seedKey.charCodeAt(i);
+    function rand(){ seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+    for(let i=arr.length-1;i>0;i--){
+      const j = Math.floor(rand()*(i+1));
+      [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+    return arr;
+  }
+
+  // ---------- Builder rendering ----------
+  function renderBuilder(){
+    const el = document.getElementById("builderPane");
+    let html = "";
+
+    html += showGuide
+      ? `<div class="steps-guide"><b>How this works:</b> 1) Fill in the exam info. 2) Pick a part type below to add a new part — it becomes I, II, III... on the exam. 3) Use the part tabs to switch between parts and add questions. 4) Check the preview on the right, then download the Word file (A4, ready to print).</div>`
+      : "";
+
+    // Exam info card
+    html += `<div class="card">
+      <h2>1. Exam information</h2>
+      <label class="first">Exam title</label>
+      <input type="text" id="m_title" value="${escapeHtml(state.meta.title)}" placeholder="e.g. Mid-Term Test — English">
+      <div class="row2">
+        <div><label>Subject</label><input type="text" id="m_subject" value="${escapeHtml(state.meta.subject)}" placeholder="e.g. English"></div>
+        <div><label>Class / Grade</label><input type="text" id="m_class" value="${escapeHtml(state.meta.className)}" placeholder="e.g. Grade 8A"></div>
+      </div>
+      <div class="row3">
+        <div><label>Teacher name</label><input type="text" id="m_teacher" value="${escapeHtml(state.meta.teacher)}" placeholder="e.g. Mr. Samoun"></div>
+        <div><label>Date</label><input type="text" id="m_date" value="${escapeHtml(state.meta.date)}" placeholder="e.g. 20 Aug 2026"></div>
+        <div><label>Duration</label><input type="text" id="m_duration" value="${escapeHtml(state.meta.duration)}" placeholder="e.g. 60 minutes"></div>
+      </div>
+      <label>Total score (optional)</label>
+      <input type="text" id="m_total" value="${escapeHtml(state.meta.totalScore)}" placeholder="e.g. 100">
+    </div>`;
+
+    // Part type picker — grouped, click a group to reveal its part types
+    html += `<div class="card">
+      <h2>2. Add a part</h2>
+      <div class="hint" style="margin-bottom:8px;">Pick a group, then choose the type. Every question inside that part will be this type. On the exam, the part only shows as a plain heading — I, II, III...</div>
+      ${TYPE_GROUPS.map(g => `
+        <div class="type-group">
+          <button class="type-group-head ${groupOpen[g.id] ? "open" : ""}" data-act="toggle-group" data-group="${g.id}">
+            <span>${g.label}</span>
+            <span class="chev">${groupOpen[g.id] ? ICON.chevDown : ICON.chevRight}</span>
+          </button>
+          ${groupOpen[g.id] ? `<div class="type-picker">
+            ${g.types.map(t => `
+              <button data-act="add-section" data-type="${t}">
+                <span class="tlabel">${ICON.plus} ${TYPE_INFO[t].label}</span>
+                <span class="tdesc">${TYPE_INFO[t].desc}</span>
+              </button>
+            `).join("")}
+          </div>` : ""}
+        </div>
+      `).join("")}
+    </div>`;
+
+    // Sections (tabbed)
+    html += `<div class="card"><h2>3. Parts &amp; Questions</h2>`;
+    if(state.sections.length === 0){
+      html += `<div class="empty-state">No parts yet. Pick a part type above to start.</div>`;
+    } else {
+      if(!activeSectionId || !state.sections.find(s => s.id === activeSectionId)){
+        activeSectionId = state.sections[0].id;
+      }
+      html += `<div class="part-tabs-hint">Drag a tab to reorder parts (or use the ↑ ↓ buttons below — easier on a phone).</div>`;
+      html += `<div class="part-tabs">`;
+      state.sections.forEach((sec, si) => {
+        html += `<button class="part-tab ${sec.id === activeSectionId ? "active" : ""}" draggable="true" data-act="tab-select" data-id="${sec.id}">
+          ${toRoman(si)}<span class="pt-type">${TYPE_INFO[sec.type].label}</span>
+        </button>`;
+      });
+      html += `</div>`;
+
+      const si = state.sections.findIndex(s => s.id === activeSectionId);
+      const sec = state.sections[si];
+      html += `<div class="section-block">
+        <div class="section-head">
+          <span><span class="roman">${toRoman(si)}</span><span class="typepill">${TYPE_INFO[sec.type].label}</span></span>
+          <div class="section-actions">
+            <button class="btn-icon btn-ghost" data-act="sec-up" data-id="${sec.id}" title="Move left">${ICON.up}</button>
+            <button class="btn-icon btn-ghost" data-act="sec-down" data-id="${sec.id}" title="Move right">${ICON.down}</button>
+            <button class="btn-icon btn-danger" data-act="sec-del" data-id="${sec.id}" title="Delete part">${ICON.close}</button>
+          </div>
+        </div>
+        <div class="section-body">
+          <div class="note-box">
+            <div class="note-box-head">
+              <button class="btn-bold-toggle ${sec.noteBold ? "active" : ""}" data-act="sec-notebold" data-id="${sec.id}" title="Make this text bold on the exam" type="button">B</button>
+              <label class="first" style="margin:0;">Instructions for this part (optional — shown under the heading, e.g. "Choose the correct answer" or "Match the items below")</label>
+            </div>
+            <textarea data-act="sec-note" data-id="${sec.id}" placeholder="e.g. Choose the correct answer by putting a check in the box." style="${sec.noteBold ? "font-weight:700;" : ""}">${escapeHtml(sec.note)}</textarea>
+          </div>`;
+
+      if(sec.questions.length === 0){
+        html += `<div class="empty-state" style="margin-top:8px;">No questions in this part yet.</div>`;
+      }
+
+      sec.questions.forEach((q, qi) => {
+        html += renderQuestionEditor(sec, q, qi);
+      });
+
+      html += `<div class="mini-actions">
+        <button class="btn-small btn-primary" data-act="q-add" data-sec="${sec.id}">${ICON.plus} Add question</button>
+      </div>
+      </div></div>`;
+    }
+    html += `</div>`;
+
+    el.innerHTML = html;
+    attachBuilderEvents();
+  }
+
+  function summarizeQuestion(q){
+    let snippet = "";
+    if(q.type === "fill" || q.type === "short" || q.type === "writing"){
+      snippet = q.text || "";
+    } else if(q.type === "mc"){
+      snippet = q.text || "";
+    } else if(q.type === "match"){
+      snippet = q.text || (q.pairs && q.pairs[0] ? q.pairs[0].left : "");
+    }
+    snippet = snippet.trim();
+    if(!snippet) return "";
+    if(snippet.length > 40) snippet = snippet.slice(0, 40) + "…";
+    return ` — ${escapeHtml(snippet)}`;
+  }
+
+  function renderQuestionEditor(sec, q, qi){
+    const isCollapsed = collapsedQuestions.has(q.id);
+    let inner = `<div class="question-block" data-qid="${q.id}">
+      <div class="qhead">
+        <span class="qnum">Question ${qi+1}${isCollapsed ? summarizeQuestion(q) : ""}</span>
+        <div class="section-actions">
+          <button class="btn-icon btn-ghost" data-act="q-toggle" data-sec="${sec.id}" data-id="${q.id}" title="${isCollapsed ? "Expand" : "Collapse"}">${isCollapsed ? ICON.chevDown : ICON.chevUp}</button>
+          <button class="btn-icon btn-ghost" data-act="q-up" data-sec="${sec.id}" data-id="${q.id}">${ICON.up}</button>
+          <button class="btn-icon btn-ghost" data-act="q-down" data-sec="${sec.id}" data-id="${q.id}">${ICON.down}</button>
+          <button class="btn-icon btn-danger" data-act="q-del" data-sec="${sec.id}" data-id="${q.id}">${ICON.close}</button>
+        </div>
+      </div>`;
+
+    if(isCollapsed){
+      inner += `</div>`;
+      return inner;
+    }
+
+    if(q.type === "fill"){
+      const blankCount = (q.text.match(/\.{3,}/g) || []).length;
+      inner += `<label class="first">Question text — write ..... anywhere a blank should go (you can use more than one)</label>
+      <textarea data-act="q-text" data-sec="${sec.id}" data-id="${q.id}" placeholder="e.g. I go to ..... school ..... this weekend.">${escapeHtml(q.text)}</textarea>
+      <div class="hint">You can put several blanks in one sentence, e.g. <em>"I go to ..... school ..... this weekend."</em> — it's optional, use as many or as few as you need.</div>
+      <div class="row2">
+        <div>
+          <label>Blank size (space to leave for each answer)</label>
+          <select data-act="q-blanksize" data-sec="${sec.id}" data-id="${q.id}">
+            ${BLANK_SIZE_OPTIONS.map(n => `<option value="${n}" ${+q.blankSize === n ? "selected" : ""}>${n} characters ${n<=10?"(short)":n>=30?"(long)":""}</option>`).join("")}
+          </select>
+        </div>
+        <div>
+          <label>${blankCount > 1 ? `Correct answers — this question has ${blankCount} blanks, enter ${blankCount} answers separated by commas, in order` : "Correct answer (for the teacher's answer key)"}</label>
+          <input type="text" data-act="q-answer" data-sec="${sec.id}" data-id="${q.id}" value="${escapeHtml(q.answer)}" placeholder="${blankCount > 1 ? "e.g. school, tomorrow" : "e.g. Phnom Penh"}">
+        </div>
+      </div>`;
+    } else if(q.type === "mc"){
+      inner += `<label class="first">Question text</label>
+      <textarea data-act="q-text" data-sec="${sec.id}" data-id="${q.id}" placeholder="e.g. Which planet is closest to the sun?">${escapeHtml(q.text)}</textarea>
+      <label>Answer choices — tick the correct one</label>`;
+      q.options.forEach((opt, oi) => {
+        inner += `<div class="opt-row">
+          <span class="opt-letter">${toLetter(oi)}</span>
+          <input type="text" data-act="opt-text" data-sec="${sec.id}" data-id="${q.id}" data-oi="${oi}" value="${escapeHtml(opt.text)}" placeholder="Option ${toLetter(oi)}">
+          <label style="display:flex;align-items:center;gap:4px;margin:0;font-weight:500;">
+            <input type="radio" name="correct_${q.id}" data-act="opt-correct" data-sec="${sec.id}" data-id="${q.id}" data-oi="${oi}" ${opt.correct ? "checked" : ""} style="width:auto;">Correct
+          </label>
+          ${q.options.length > 2 ? `<button class="btn-icon btn-danger" data-act="opt-del" data-sec="${sec.id}" data-id="${q.id}" data-oi="${oi}">${ICON.close}</button>` : ""}
+        </div>`;
+      });
+      inner += `<button class="btn-small btn-ghost" data-act="opt-add" data-sec="${sec.id}" data-id="${q.id}">${ICON.plus} Add choice</button>`;
+    } else if(q.type === "match"){
+      inner += `<label class="first">Instruction shown above (optional — e.g. "Match each word to its meaning")</label>
+      <textarea data-act="q-text" data-sec="${sec.id}" data-id="${q.id}" placeholder="e.g. Match the term on the left to its meaning on the right.">${escapeHtml(q.text)}</textarea>
+      <label>Pairs — left item and its correct match on the right</label>`;
+      q.pairs.forEach((p, pi) => {
+        inner += `<div class="match-row">
+          <input type="text" data-act="pair-left" data-sec="${sec.id}" data-id="${q.id}" data-pi="${pi}" value="${escapeHtml(p.left)}" placeholder="Item ${pi+1}">
+          <input type="text" data-act="pair-right" data-sec="${sec.id}" data-id="${q.id}" data-pi="${pi}" value="${escapeHtml(p.right)}" placeholder="Match for item ${pi+1}">
+          ${q.pairs.length > 2 ? `<button class="btn-icon btn-danger" data-act="pair-del" data-sec="${sec.id}" data-id="${q.id}" data-pi="${pi}">${ICON.close}</button>` : `<span></span>`}
+        </div>`;
+      });
+      inner += `<button class="btn-small btn-ghost" data-act="pair-add" data-sec="${sec.id}" data-id="${q.id}">${ICON.plus} Add pair</button>
+      <div class="hint">On the printed exam, the right-hand column is shuffled automatically so it's not a giveaway.</div>`;
+    } else if(q.type === "short"){
+      inner += `<label class="first">Question text</label>
+      <textarea data-act="q-text" data-sec="${sec.id}" data-id="${q.id}" placeholder="e.g. Explain why plants need sunlight.">${escapeHtml(q.text)}</textarea>
+      <label>Model answer (for the teacher's answer key, optional)</label>
+      <textarea data-act="q-answer" data-sec="${sec.id}" data-id="${q.id}" placeholder="Notes on what a good answer includes...">${escapeHtml(q.answer)}</textarea>
+      <label>Blank lines to leave for the student's answer</label>
+      <input type="number" min="1" max="10" data-act="q-lines" data-sec="${sec.id}" data-id="${q.id}" value="${q.lines}" style="max-width:90px;">`;
+    } else if(q.type === "writing"){
+      inner += `<label class="first">Writing prompt / topic</label>
+      <textarea data-act="q-text" data-sec="${sec.id}" data-id="${q.id}" placeholder="e.g. Write a short paragraph about your favorite season.">${escapeHtml(q.text)}</textarea>
+      <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--ink);margin-top:12px;">
+        <input type="checkbox" data-act="q-showlines" data-sec="${sec.id}" data-id="${q.id}" ${q.showLines ? "checked" : ""} style="width:auto;">
+        Add ruled lines (like paper) for the student to write on
+      </label>
+      ${q.showLines
+        ? `<label>How many lines</label>
+           <input type="number" min="1" max="30" data-act="q-linecount" data-sec="${sec.id}" data-id="${q.id}" value="${q.lineCount}" style="max-width:100px;">`
+        : `<div class="hint">No lines — students get an open blank space instead of ruled lines.</div>`
+      }
+      <label>Grading notes / rubric (optional — shown only on the teacher's copy)</label>
+      <textarea data-act="q-notes" data-sec="${sec.id}" data-id="${q.id}" placeholder="Notes on what a good answer should include...">${escapeHtml(q.notes)}</textarea>`;
+    }
+
+    inner += `<label>Score for this question (optional)</label>
+      <input type="number" min="0" data-act="q-score" data-sec="${sec.id}" data-id="${q.id}" value="${escapeHtml(q.score)}" style="max-width:100px;">
+    </div>`;
+    return inner;
+  }
+
+  function findSection(id){ return state.sections.find(s => s.id === id); }
+  function findQuestion(sec, id){ return sec.questions.find(q => q.id === id); }
+
+  function autoSizeTextarea(t){
+    t.style.height = "auto";
+    t.style.height = (t.scrollHeight + 3) + "px";
+  }
+
+  function autoSizeAllTextareas(){
+    document.querySelectorAll("#builderPane textarea").forEach(autoSizeTextarea);
+  }
+
+  function attachBuilderEvents(){
+    bind("m_title", v => state.meta.title = v);
+    bind("m_subject", v => state.meta.subject = v);
+    bind("m_class", v => state.meta.className = v);
+    bind("m_teacher", v => state.meta.teacher = v);
+    bind("m_date", v => state.meta.date = v);
+    bind("m_duration", v => state.meta.duration = v);
+    bind("m_total", v => state.meta.totalScore = v);
+
+    function bind(id, fn){
+      const node = document.getElementById(id);
+      if(!node) return;
+      node.addEventListener("input", () => { fn(node.value); renderPreview(); });
+    }
+
+    autoSizeAllTextareas();
+  }
+
+  function initDelegatedEvents(){
+    const el = document.getElementById("builderPane");
+    let dragSourceId = null;
+    el.addEventListener("dragstart", (e) => {
+      const tab = e.target.closest(".part-tab");
+      if(!tab) return;
+      dragSourceId = tab.dataset.id;
+      tab.classList.add("dragging");
+      if(e.dataTransfer){
+        e.dataTransfer.effectAllowed = "move";
+        try{ e.dataTransfer.setData("text/plain", tab.dataset.id); }catch(err){}
+      }
+    });
+    el.addEventListener("dragend", () => {
+      document.querySelectorAll(".part-tab.dragging").forEach(n => n.classList.remove("dragging"));
+      document.querySelectorAll(".part-tab.drag-over").forEach(n => n.classList.remove("drag-over"));
+      dragSourceId = null;
+    });
+    el.addEventListener("dragover", (e) => {
+      const tab = e.target.closest(".part-tab");
+      if(!tab || !dragSourceId) return;
+      e.preventDefault();
+      if(tab.dataset.id !== dragSourceId) tab.classList.add("drag-over");
+    });
+    el.addEventListener("dragleave", (e) => {
+      const tab = e.target.closest(".part-tab");
+      if(tab) tab.classList.remove("drag-over");
+    });
+    el.addEventListener("drop", (e) => {
+      const tab = e.target.closest(".part-tab");
+      if(!tab) return;
+      e.preventDefault();
+      tab.classList.remove("drag-over");
+      const targetId = tab.dataset.id;
+      if(!dragSourceId || dragSourceId === targetId) return;
+      const fromIdx = state.sections.findIndex(s => s.id === dragSourceId);
+      const toIdx = state.sections.findIndex(s => s.id === targetId);
+      if(fromIdx < 0 || toIdx < 0) return;
+      const [moved] = state.sections.splice(fromIdx, 1);
+      state.sections.splice(toIdx, 0, moved);
+      activeSectionId = moved.id;
+      dragSourceId = null;
+      renderBuilder(); renderPreview();
+    });
+
+    el.addEventListener("click", (e) => {
+      const t = e.target.closest("[data-act]");
+      if(!t) return;
+      const act = t.dataset.act;
+
+      if(act === "toggle-group"){
+        const gid = t.dataset.group;
+        groupOpen[gid] = !groupOpen[gid];
+        renderBuilder();
+        return;
+      }
+
+      if(act === "add-section"){
+        const sec = newSection(t.dataset.type);
+        state.sections.push(sec);
+        activeSectionId = sec.id;
+      } else if(act === "tab-select"){
+        activeSectionId = t.dataset.id;
+      } else if(act === "sec-notebold"){
+        const sec = findSection(t.dataset.id);
+        sec.noteBold = !sec.noteBold;
+      } else if(act === "sec-del"){
+        state.sections = state.sections.filter(s => s.id !== t.dataset.id);
+        if(activeSectionId === t.dataset.id){
+          activeSectionId = state.sections.length ? state.sections[0].id : null;
+        }
+      } else if(act === "sec-up" || act === "sec-down"){
+        const idx = state.sections.findIndex(s => s.id === t.dataset.id);
+        const swap = act === "sec-up" ? idx-1 : idx+1;
+        if(swap >= 0 && swap < state.sections.length){
+          [state.sections[idx], state.sections[swap]] = [state.sections[swap], state.sections[idx]];
+        }
+      } else if(act === "q-add"){
+        const sec = findSection(t.dataset.sec);
+        sec.questions.push(newQuestion(sec.type));
+      } else if(act === "q-del"){
+        const sec = findSection(t.dataset.sec);
+        sec.questions = sec.questions.filter(q => q.id !== t.dataset.id);
+        collapsedQuestions.delete(t.dataset.id);
+      } else if(act === "q-toggle"){
+        const qid = t.dataset.id;
+        if(collapsedQuestions.has(qid)) collapsedQuestions.delete(qid);
+        else collapsedQuestions.add(qid);
+        renderBuilder();
+        return;
+      } else if(act === "q-up" || act === "q-down"){
+        const sec = findSection(t.dataset.sec);
+        const idx = sec.questions.findIndex(q => q.id === t.dataset.id);
+        const swap = act === "q-up" ? idx-1 : idx+1;
+        if(swap >= 0 && swap < sec.questions.length){
+          [sec.questions[idx], sec.questions[swap]] = [sec.questions[swap], sec.questions[idx]];
+        }
+      } else if(act === "opt-add"){
+        const sec = findSection(t.dataset.sec); const q = findQuestion(sec, t.dataset.id);
+        q.options.push({text:"", correct:false});
+      } else if(act === "opt-del"){
+        const sec = findSection(t.dataset.sec); const q = findQuestion(sec, t.dataset.id);
+        q.options.splice(+t.dataset.oi, 1);
+      } else if(act === "opt-correct"){
+        const sec = findSection(t.dataset.sec); const q = findQuestion(sec, t.dataset.id);
+        q.options.forEach((o,i)=> o.correct = (i === +t.dataset.oi));
+      } else if(act === "pair-add"){
+        const sec = findSection(t.dataset.sec); const q = findQuestion(sec, t.dataset.id);
+        q.pairs.push({left:"", right:""}); q.shuffle = null;
+      } else if(act === "pair-del"){
+        const sec = findSection(t.dataset.sec); const q = findQuestion(sec, t.dataset.id);
+        q.pairs.splice(+t.dataset.pi, 1); q.shuffle = null;
+      } else if(act === "q-showlines"){
+        const sec = findSection(t.dataset.sec); const q = findQuestion(sec, t.dataset.id);
+        q.showLines = t.checked;
+      } else {
+        return;
+      }
+      renderBuilder(); renderPreview();
+    });
+
+    el.addEventListener("input", (e) => {
+      if(e.target.tagName === "TEXTAREA"){
+        autoSizeTextarea(e.target);
+      }
+      const t = e.target.closest("[data-act]");
+      if(!t) return;
+      const act = t.dataset.act;
+      if(act === "sec-note"){
+        findSection(t.dataset.id).note = t.value;
+      } else if(act === "q-text"){
+        const sec = findSection(t.dataset.sec); findQuestion(sec, t.dataset.id).text = t.value;
+      } else if(act === "q-answer"){
+        const sec = findSection(t.dataset.sec); findQuestion(sec, t.dataset.id).answer = t.value;
+      } else if(act === "q-notes"){
+        const sec = findSection(t.dataset.sec); findQuestion(sec, t.dataset.id).notes = t.value;
+      } else if(act === "q-score"){
+        const sec = findSection(t.dataset.sec); findQuestion(sec, t.dataset.id).score = t.value;
+      } else if(act === "q-lines"){
+        const sec = findSection(t.dataset.sec); findQuestion(sec, t.dataset.id).lines = +t.value || 1;
+      } else if(act === "q-linecount"){
+        const sec = findSection(t.dataset.sec); findQuestion(sec, t.dataset.id).lineCount = +t.value || 1;
+      } else if(act === "q-blanksize"){
+        const sec = findSection(t.dataset.sec); findQuestion(sec, t.dataset.id).blankSize = +t.value;
+      } else if(act === "opt-text"){
+        const sec = findSection(t.dataset.sec); const q = findQuestion(sec, t.dataset.id);
+        q.options[+t.dataset.oi].text = t.value;
+      } else if(act === "pair-left"){
+        const sec = findSection(t.dataset.sec); const q = findQuestion(sec, t.dataset.id);
+        q.pairs[+t.dataset.pi].left = t.value;
+      } else if(act === "pair-right"){
+        const sec = findSection(t.dataset.sec); const q = findQuestion(sec, t.dataset.id);
+        q.pairs[+t.dataset.pi].right = t.value;
+      } else {
+        return;
+      }
+      renderPreview();
+    });
+  }
+
+  // ---------- Preview / Export shared builder ----------
+  function renderFillText(text, blankSize){
+    const width = blankWidthPx(blankSize || 20);
+    const span = `<span class="blankline" style="width:${width}px;">&nbsp;</span>`;
+    const escaped = escapeHtml(text);
+    if(/\.{3,}/.test(escaped)){
+      return escaped.replace(/\.{3,}/g, span);
+    }
+    return (escaped || "(question text)") + " " + span;
+  }
+
+  function buildHeaderBlock(){
+    let h = "";
+    h += `<div class="exam-title">${escapeHtml(state.meta.title) || "Untitled Exam"}</div>`;
+    const subBits = [state.meta.subject, state.meta.className].filter(Boolean).join(" &nbsp;•&nbsp; ");
+    if(subBits) h += `<div class="exam-sub">${subBits}</div>`;
+
+    const scoreCell = `<span class="flabel">Score:</span><span class="blankline" style="width:70px;">&nbsp;</span>${state.meta.totalScore ? " / " + escapeHtml(state.meta.totalScore) : ""}`;
+    h += `<table class="examhead"><tbody>
+      <tr>
+        <td style="width:55%;"><span class="flabel">Name:</span><span class="blankline" style="width:220px;">&nbsp;</span></td>
+        <td><span class="flabel">Class:</span><span class="blankline" style="width:140px;">&nbsp;</span></td>
+      </tr>
+      <tr>
+        <td><span class="flabel">Date:</span><span class="blankline" style="width:220px;">&nbsp;</span></td>
+        <td>${scoreCell}</td>
+      </tr>
+    </tbody></table>`;
+
+    if(state.meta.teacher || state.meta.duration){
+      const bits = [];
+      if(state.meta.teacher) bits.push("Teacher: " + escapeHtml(state.meta.teacher));
+      if(state.meta.duration) bits.push("Duration: " + escapeHtml(state.meta.duration));
+      h += `<div style="font-size:12.5px;color:#444;margin:-12px 0 16px;">${bits.join(" &nbsp;|&nbsp; ")}</div>`;
+    }
+    return h;
+  }
+
+  function buildQuestionBlock(mode, sec, q, qi){
+    let h = `<div class="q-item">`;
+    const scoreTag = q.score ? `<span class="score-tag">(${escapeHtml(q.score)} pts)</span>` : "";
+    if(q.type === "fill"){
+      h += `<span class="qn">${qi+1}.</span>${renderFillText(q.text, q.blankSize)}${scoreTag}`;
+      if(mode === "teacher" && q.answer){
+        h += `<div class="answer-key">Answer: ${escapeHtml(q.answer)}</div>`;
+      }
+    } else if(q.type === "mc"){
+      h += `<span class="qn">${qi+1}.</span>${escapeHtml(q.text) || "(question text)"}${scoreTag}`;
+      h += `<div class="opt-list">`;
+      q.options.forEach((opt, oi) => {
+        const isCorrect = mode === "teacher" && opt.correct;
+        h += `<div><span class="box${isCorrect ? " checked" : ""}"></span>${toLetter(oi)}. ${escapeHtml(opt.text) || "(choice)"}</div>`;
+      });
+      h += `</div>`;
+    } else if(q.type === "match"){
+      h += `<span class="qn">${qi+1}.</span>${escapeHtml(q.text) || "Match the items below."}${scoreTag}`;
+      const n = q.pairs.length;
+      if(!q.shuffle || q.shuffle.length !== n){
+        q.shuffle = shuffledIndices(n, q.id + "_" + n);
+      }
+      h += `<table class="match-table"><tbody>`;
+      q.pairs.forEach((p, pi) => {
+        let leftCell, rightCell;
+        if(mode === "teacher"){
+          leftCell = `(&nbsp;${toLetter(pi)}&nbsp;) &nbsp;${pi+1}. ${escapeHtml(p.left) || "(item)"}`;
+          rightCell = `<span class="answer-key">${escapeHtml(p.right) || "(match)"}</span>`;
+        } else {
+          const rightIdx = q.shuffle[pi];
+          const rightPair = q.pairs[rightIdx];
+          leftCell = `(&nbsp;&nbsp;&nbsp;&nbsp;) &nbsp;${pi+1}. ${escapeHtml(p.left) || "(item)"}`;
+          rightCell = `${toLetter(pi)}. ${escapeHtml(rightPair.right) || "(match)"}`;
+        }
+        h += `<tr><td class="left">${leftCell}</td><td>${rightCell}</td></tr>`;
+      });
+      h += `</tbody></table>`;
+    } else if(q.type === "short" && mode === "teacher" && q.answer){
+      h += `<span class="qn">${qi+1}.</span>${escapeHtml(q.text) || "(question text)"}${scoreTag}`;
+      h += `<div class="answer-key">Model answer: ${escapeHtml(q.answer)}</div>`;
+    } else if(q.type === "writing" && mode === "teacher" && q.notes){
+      h += `<span class="qn">${qi+1}.</span>${escapeHtml(q.text) || "(writing prompt)"}${scoreTag}`;
+      h += `<div class="answer-key">Grading notes: ${escapeHtml(q.notes)}</div>`;
+    } else if(q.type === "writing"){
+      h += `<span class="qn">${qi+1}.</span>${escapeHtml(q.text) || "(writing prompt)"}${scoreTag}`;
+      h += `<div style="border:1px dashed #999;border-radius:4px;height:180px;margin:8px 6px 0 22px;"></div>`;
+    }
+    h += `</div>`;
+    return h;
+  }
+  function pushLinedQuestionBlocks(blocks, qi, promptHtml, scoreTag, lineCount){
+    blocks.push({
+      html: `<div class="q-item tight"><span class="qn">${qi+1}.</span>${promptHtml}${scoreTag}</div>`,
+      keepWithNext: true
+    });
+    for(let i = 0; i < lineCount; i++){
+      blocks.push({ html: `<div class="line-wrap"><div class="line-rule"></div></div>` });
+    }
+  }
+
+  function buildExamBlocks(mode){
+    const blocks = [{ html: buildHeaderBlock() }];
+
+    if(state.sections.length === 0){
+      blocks.push({ html: `<div style="color:#8a8f89;font-style:italic;">Your exam preview will appear here as you add parts and questions.</div>` });
+    }
+
+    state.sections.forEach((sec, si) => {
+      let headHtml = sec.note
+        ? `<div class="sec-roman-line">${toRoman(si)}. <span class="sec-note-inline${sec.noteBold ? " bold" : ""}">${escapeHtml(sec.note)}</span></div>`
+        : `<div class="sec-roman-line">${toRoman(si)}.</div>`;
+      // Not glued to the next block: real Word lets a part heading like
+      // "IV." land alone at the bottom of a page and continue the
+      // question on the next page — gluing them here was pushing the
+      // heading itself to page 2 early, which doesn't match the real file.
+      blocks.push({ html: headHtml });
+
+      sec.questions.forEach((q, qi) => {
+        const scoreTag = q.score ? `<span class="score-tag">(${escapeHtml(q.score)} pts)</span>` : "";
+
+        if(q.type === "short" && !(mode === "teacher" && q.answer)){
+          const lines = Math.max(1, q.lines || 3);
+          pushLinedQuestionBlocks(blocks, qi, escapeHtml(q.text) || "(question text)", scoreTag, lines);
+          return;
+        }
+        if(q.type === "writing" && !(mode === "teacher" && q.notes) && q.showLines){
+          const lines = Math.max(1, q.lineCount || 12);
+          pushLinedQuestionBlocks(blocks, qi, escapeHtml(q.text) || "(writing prompt)", scoreTag, lines);
+          return;
+        }
+        blocks.push({ html: buildQuestionBlock(mode, sec, q, qi) });
+      });
+    });
+
+    return blocks;
+  }
+
+  // Simulated A4 pagination for the on-screen preview. Renders each block
+  // into a hidden measuring box at the real page content width, then packs
+  // blocks greedily into page-height budgets — a "part heading" is glued to
+  // the question right after it so a heading never ends up alone at the
+  // bottom of a page. This mirrors roughly what the real .docx will do; the
+  // .docx itself remains the source of truth for exact pagination.
+  function getMeasureEl(){
+    let el = document.getElementById("measureBox");
+    if(!el){
+      el = document.createElement("div");
+      el.id = "measureBox";
+      el.style.position = "absolute";
+      el.style.visibility = "hidden";
+      el.style.left = "-9999px";
+      el.style.top = "0";
+      el.className = "page-sheet";
+      el.style.position = "absolute";
+      document.body.appendChild(el);
+    }
+    // Content width = page width minus left/right 2cm padding (page-sheet padding:2cm)
+    el.style.width = "calc(21cm - 4cm)";
+    el.style.minHeight = "0";
+    el.style.padding = "0";
+    return el;
+  }
+
+  function pageContentHeightPx(){
+    const cmToPx = 96 / 2.54;
+    const PREVIEW_CALIBRATION = 1.15;
+    return (25.7 * cmToPx) * PREVIEW_CALIBRATION;
+  }
+
+  function paginateBlocks(blocks){
+    const measureEl = getMeasureEl();
+    const budget = pageContentHeightPx();
+    const pages = [[]];
+    let used = 0;
+
+    for(let i = 0; i < blocks.length; i++){
+      const block = blocks[i];
+      measureEl.innerHTML = block.html;
+      let h = measureEl.offsetHeight;
+
+      // If this block wants to stay with the next one (a part heading with
+      // its first question), measure them together for the fit check.
+      let glued = h;
+      if(block.keepWithNext && blocks[i+1]){
+        measureEl.innerHTML = block.html + blocks[i+1].html;
+        glued = measureEl.offsetHeight;
+      }
+
+      const fits = used === 0 || used + glued <= budget;
+      if(!fits){
+        pages.push([]);
+        used = 0;
+      }
+      pages[pages.length - 1].push(block.html);
+      used += h;
+    }
+    return pages;
+  }
+
+  const PAGE_NATURAL_WIDTH_PX = 21 * (96 / 2.54); // 21cm at 96dpi
+
+  function updatePageScale(){
+    const paperEl = document.getElementById("paper");
+    if(!paperEl) return;
+    const available = paperEl.clientWidth || paperEl.parentElement.clientWidth;
+
+    // Below this width, shrinking the whole A4 page to fit makes the text
+    // physically unreadable (a 12.5pt font at ~0.4x scale is under 6px on
+    // screen). On phones, skip the "miniature printed page" look entirely
+    // and switch to a plain, full-width, normal-size reading layout instead
+    // — clearer even though it no longer looks like a literal page.
+    const MOBILE_BREAK_PX = 560;
+    if(available < MOBILE_BREAK_PX){
+      paperEl.classList.add("mobile-preview");
+      paperEl.style.removeProperty("--page-scale");
+      return;
+    }
+    paperEl.classList.remove("mobile-preview");
+
+    // No upper cap: the on-screen page now always fills 100% of the
+    // available preview width (scaling up on wide screens too), so there's
+    // no leftover empty space beside it. This only affects how big the
+    // preview LOOKS — the underlying text is still measured and paginated
+    // at the true A4 content width, so line breaks and page counts still
+    // match the real .docx exactly; transform:scale just displays that
+    // already-correct layout larger or smaller as one solid block.
+    const scale = available / PAGE_NATURAL_WIDTH_PX;
+    paperEl.style.setProperty("--page-scale", scale.toFixed(4));
+  }
+
+  function renderPreview(){
+    const blocks = buildExamBlocks(previewMode);
+    const pages = paginateBlocks(blocks);
+
+    const paperEl = document.getElementById("paper");
+    paperEl.innerHTML = pages.map((pageHtmls, i) => `
+      <div class="page-shell"><div class="page-sheet">
+        ${pageHtmls.join("")}
+        <div class="page-number">Page ${i+1} of ${pages.length}</div>
+      </div></div>
+    `).join("");
+    updatePageScale();
+
+    const banner = document.getElementById("pageBanner");
+    if(pages.length > 1){
+      banner.className = "page-banner multi";
+      banner.textContent = `This exam is now ${pages.length} pages when printed — shown below as ${pages.length} separate A4 sheets.`;
+    } else {
+      banner.className = "page-banner single";
+      banner.textContent = `This exam fits on 1 page.`;
+    }
+
+    saveState();
+  }
+
+  // Keeps the sticky header and the sticky right-hand preview panel from
+  // overlapping: the header's real height (which can change — e.g. the
+  // Khmer label wrapping to a new line) is written to a CSS variable that
+  // the preview panel's "top" and "height" both read from.
+  function updateHeaderHeightVar(){
+    const header = document.querySelector(".app-header");
+    if(!header) return;
+    document.documentElement.style.setProperty("--header-h", header.offsetHeight + "px");
+  }
+
+  window.addEventListener("resize", () => {
+    clearTimeout(window.__pageScaleResizeTimer);
+    window.__pageScaleResizeTimer = setTimeout(() => {
+      updatePageScale();
+      updateHeaderHeightVar();
+    }, 120);
+  });
+
+  document.getElementById("tabTeacher").addEventListener("click", () => {
+    previewMode = "teacher";
+    document.getElementById("tabTeacher").classList.add("active");
+    document.getElementById("tabStudent").classList.remove("active");
+    renderPreview();
+  });
+  document.getElementById("tabStudent").addEventListener("click", () => {
+    previewMode = "student";
+    document.getElementById("tabStudent").classList.add("active");
+    document.getElementById("tabTeacher").classList.remove("active");
+    renderPreview();
+  });
+
+  const A4_WIDTH_TWIPS = 11906;   
+  const A4_HEIGHT_TWIPS = 16838; 
+  const MARGIN_TWIPS = 1134;  
+  const CONTENT_WIDTH_TWIPS = A4_WIDTH_TWIPS - (MARGIN_TWIPS * 2);
+  const INK_COLOR = "1C2B2E";
+  const ACCENT_COLOR = "1F4238";
+  const GRAY_COLOR = "555555";
+  const Q_INDENT = 460;   
+  const SUB_INDENT = 780;
+  const LINE_ROW_HEIGHT = 360; 
+
+  function xesc(s){
+    return String(s == null ? "" : s)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;").replace(/'/g,"&apos;");
+  }
+
+  function wRun(text, opts){
+    opts = opts || {};
+    const size = opts.size || 24; 
+    let rpr = "<w:rPr><w:rFonts w:ascii=\"Times New Roman\" w:hAnsi=\"Times New Roman\" w:cs=\"Times New Roman\"/>";
+    if(opts.bold) rpr += "<w:b/>";
+    if(opts.italic) rpr += "<w:i/>";
+    if(opts.underline) rpr += "<w:u w:val=\"single\"/>";
+    if(opts.color) rpr += "<w:color w:val=\"" + opts.color + "\"/>";
+    rpr += "<w:sz w:val=\"" + size + "\"/><w:szCs w:val=\"" + size + "\"/></w:rPr>";
+    return "<w:r>" + rpr + "<w:t xml:space=\"preserve\">" + xesc(text) + "</w:t></w:r>";
+  }
+
+  function wBlank(chars, opts){
+    opts = opts || {};
+    const n = Math.max(chars || 12, 6);
+    return wRun(" ".repeat(n), Object.assign({underline:true}, opts));
+  }
+
+  function wTab(){ return "<w:r><w:tab/></w:r>"; }
+
+  function wPara(runsXml, opts){
+    opts = opts || {};
+    let spacingAttrs = "w:before=\"" + (opts.before||0) + "\" w:after=\"" + (opts.after==null?120:opts.after) + "\"";
+    if(opts.minHeight) spacingAttrs += " w:line=\"" + opts.minHeight + "\" w:lineRule=\"atLeast\"";
+    let ppr = "<w:pPr><w:spacing " + spacingAttrs + "/>";
+    if(opts.align) ppr += "<w:jc w:val=\"" + opts.align + "\"/>";
+    if(opts.indent) ppr += "<w:ind w:left=\"" + opts.indent + "\"/>";
+    if(opts.tabPos) ppr += "<w:tabs><w:tab w:val=\"left\" w:pos=\"" + opts.tabPos + "\"/></w:tabs>";
+    if(opts.borderBottom) ppr += "<w:pBdr><w:bottom w:val=\"single\" w:sz=\"6\" w:space=\"1\" w:color=\"333333\"/></w:pBdr>";
+    if(opts.boxBorder) ppr += "<w:pBdr>" +
+      "<w:top w:val=\"single\" w:sz=\"6\" w:space=\"4\" w:color=\"999999\"/>" +
+      "<w:left w:val=\"single\" w:sz=\"6\" w:space=\"4\" w:color=\"999999\"/>" +
+      "<w:bottom w:val=\"single\" w:sz=\"6\" w:space=\"4\" w:color=\"999999\"/>" +
+      "<w:right w:val=\"single\" w:sz=\"6\" w:space=\"4\" w:color=\"999999\"/></w:pBdr>";
+    ppr += "</w:pPr>";
+    return "<w:p>" + ppr + runsXml + "</w:p>";
+  }
+
+  function wCell(widthTwips, paragraphsXml){
+    return "<w:tc><w:tcPr><w:tcW w:w=\"" + widthTwips + "\" w:type=\"dxa\"/><w:tcMar>" +
+      "<w:top w:w=\"100\" w:type=\"dxa\"/><w:bottom w:w=\"100\" w:type=\"dxa\"/>" +
+      "<w:left w:w=\"140\" w:type=\"dxa\"/><w:right w:w=\"140\" w:type=\"dxa\"/></w:tcMar></w:tcPr>" +
+      paragraphsXml + "</w:tc>";
+  }
+
+  function wTable(colWidths, rows, indentTwips){
+    const grid = colWidths.map(w => "<w:gridCol w:w=\"" + w + "\"/>").join("");
+    const borderTag = (side) => "<w:" + side + " w:val=\"single\" w:sz=\"4\" w:space=\"0\" w:color=\"333333\"/>";
+    const borders = "<w:tblBorders>" + ["top","left","bottom","right","insideH","insideV"].map(borderTag).join("") + "</w:tblBorders>";
+    const trs = rows.map(row => "<w:tr>" + row.map((cellXml, i) => wCell(colWidths[i], cellXml)).join("") + "</w:tr>").join("");
+    const tblInd = indentTwips ? "<w:tblInd w:w=\"" + indentTwips + "\" w:type=\"dxa\"/>" : "";
+    return "<w:tbl><w:tblPr><w:tblW w:w=\"0\" w:type=\"auto\"/>" + tblInd + borders + "</w:tblPr><w:tblGrid>" + grid + "</w:tblGrid>" + trs + "</w:tbl>";
+  }
+
+  // Ruled writing lines / blank boxes, built as a table with an explicit
+  // fixed row height per line. A run of only whitespace inside a bare
+  // paragraph is handled inconsistently across Word/WPS/LibreOffice — some
+  // renderers collapse it, which either drops the line or gives it wildly
+  // wrong height near a page break (both bugs seen in testing). A table row
+  // height is hard geometry the renderer can't reinterpret, so this is
+  // reliable everywhere.
+  function wLinedRows(count, widthTwips, rowHeightTwips, indentTwips){
+    const grid = "<w:gridCol w:w=\"" + widthTwips + "\"/>";
+    const cellPara = wPara(wRun(" "), {after:0});
+    const cellXml = "<w:tc><w:tcPr><w:tcW w:w=\"" + widthTwips + "\" w:type=\"dxa\"/>" +
+      "<w:tcBorders><w:top w:val=\"nil\"/><w:left w:val=\"nil\"/><w:right w:val=\"nil\"/>" +
+      "<w:bottom w:val=\"single\" w:sz=\"6\" w:space=\"0\" w:color=\"333333\"/></w:tcBorders>" +
+      "<w:tcMar><w:top w:w=\"0\" w:type=\"dxa\"/><w:bottom w:w=\"0\" w:type=\"dxa\"/>" +
+      "<w:left w:w=\"0\" w:type=\"dxa\"/><w:right w:w=\"0\" w:type=\"dxa\"/></w:tcMar></w:tcPr>" + cellPara + "</w:tc>";
+    let trs = "";
+    for(let i=0;i<count;i++){
+      trs += "<w:tr><w:trPr><w:trHeight w:val=\"" + rowHeightTwips + "\" w:hRule=\"atLeast\"/></w:trPr>" + cellXml + "</w:tr>";
+    }
+    const tblInd = indentTwips ? "<w:tblInd w:w=\"" + indentTwips + "\" w:type=\"dxa\"/>" : "";
+    return "<w:tbl><w:tblPr><w:tblW w:w=\"" + widthTwips + "\" w:type=\"dxa\"/>" + tblInd +
+      "<w:tblBorders><w:top w:val=\"nil\"/><w:left w:val=\"nil\"/><w:bottom w:val=\"nil\"/><w:right w:val=\"nil\"/>" +
+      "<w:insideH w:val=\"nil\"/><w:insideV w:val=\"nil\"/></w:tblBorders></w:tblPr><w:tblGrid>" + grid + "</w:tblGrid>" + trs + "</w:tbl>";
+  }
+
+  function wBlankBox(widthTwips, heightTwips, indentTwips){
+    const grid = "<w:gridCol w:w=\"" + widthTwips + "\"/>";
+    const cellPara = wPara(wRun(" "), {after:0});
+    const borderSide = () => "<w:val=\"single\" w:sz=\"6\" w:space=\"0\" w:color=\"999999\"/>";
+    const cellXml = "<w:tc><w:tcPr><w:tcW w:w=\"" + widthTwips + "\" w:type=\"dxa\"/>" +
+      "<w:tcBorders><w:top " + borderSide() + "<w:left " + borderSide() + "<w:bottom " + borderSide() + "<w:right " + borderSide() + "</w:tcBorders>" +
+      "<w:vAlign w:val=\"top\"/></w:tcPr>" + cellPara + "</w:tc>";
+    const tblInd = indentTwips ? "<w:tblInd w:w=\"" + indentTwips + "\" w:type=\"dxa\"/>" : "";
+    return "<w:tbl><w:tblPr><w:tblW w:w=\"" + widthTwips + "\" w:type=\"dxa\"/>" + tblInd + "</w:tblPr><w:tblGrid>" + grid + "</w:tblGrid>" +
+      "<w:tr><w:trPr><w:trHeight w:val=\"" + heightTwips + "\" w:hRule=\"atLeast\"/></w:trPr>" + cellXml + "</w:tr></w:tbl>";
+  }
+
+  function fillTextRuns(text, blankSize){
+    const parts = String(text||"").split(/\.{3,}/);
+    if(parts.length > 1){
+      let out = "";
+      parts.forEach((seg, i) => {
+        out += wRun(seg);
+        if(i < parts.length - 1) out += wBlank(blankSize);
+      });
+      return out;
+    }
+    return wRun(text || "(question text)") + wRun("  ") + wBlank(blankSize);
+  }
+
+  function buildDocumentXml(mode){
+    let body = "";
+
+    body += wPara(wRun(state.meta.title || "Untitled Exam", {bold:true, size:36}), {align:"center", after:60});
+    const subBits = [state.meta.subject, state.meta.className].filter(Boolean).join("   •   ");
+    if(subBits) body += wPara(wRun(subBits, {italic:true, size:24, color:GRAY_COLOR}), {align:"center", after:120});
+
+    // Name / Class / Date / Score box grid
+    const half = Math.floor(CONTENT_WIDTH_TWIPS / 2);
+    const scoreRun = wRun("Score:", {bold:true}) + wBlank(8) + (state.meta.totalScore ? wRun(" / " + state.meta.totalScore) : "");
+    body += wTable([half, CONTENT_WIDTH_TWIPS - half], [
+      [ wPara(wRun("Name:", {bold:true}) + wBlank(26), {after:0}), wPara(wRun("Class:", {bold:true}) + wBlank(16), {after:0}) ],
+      [ wPara(wRun("Date:", {bold:true}) + wBlank(20), {after:0}), wPara(scoreRun, {after:0}) ]
+    ]);
+    body += wPara(wRun(" "), {after:80});
+
+    const footBits = [];
+    if(state.meta.teacher) footBits.push("Teacher: " + state.meta.teacher);
+    if(state.meta.duration) footBits.push("Duration: " + state.meta.duration);
+    if(footBits.length) body += wPara(wRun(footBits.join("     "), {italic:true, size:24, color:GRAY_COLOR}), {after:140});
+
+    if(state.sections.length === 0){
+      body += wPara(wRun("(No parts added yet.)", {italic:true, color:GRAY_COLOR}));
+    }
+
+    state.sections.forEach((sec, si) => {
+      const romanRun = wRun(toRoman(si) + ".", {bold:true, size:28});
+      const noteRun = sec.note ? wRun("  " + sec.note, {bold: !!sec.noteBold, size:24, color: INK_COLOR}) : "";
+      body += wPara(romanRun + noteRun, {before:0, after:140});
+
+      sec.questions.forEach((q, qi) => {
+        const scoreSuffix = q.score ? wRun("   (" + q.score + " pts)", {size:24, color:GRAY_COLOR}) : "";
+        const qNum = wRun(qi+1 + ". ", {bold:true});
+
+        if(q.type === "fill"){
+          body += wPara(qNum + fillTextRuns(q.text, q.blankSize) + scoreSuffix, {after:60, indent:Q_INDENT});
+          if(mode === "teacher" && q.answer){
+            body += wPara(wRun("Answer: " + q.answer, {bold:true, color:ACCENT_COLOR, size:24}), {indent:SUB_INDENT, after:100});
+          }
+        } else if(q.type === "mc"){
+          body += wPara(qNum + wRun(q.text || "(question text)") + scoreSuffix, {after:60, indent:Q_INDENT});
+          q.options.forEach((opt, oi, arr) => {
+            const checked = mode === "teacher" && opt.correct;
+            const box = checked ? wRun("\u2611 ", {bold:true, color:ACCENT_COLOR}) : wRun("\u2610 ");
+            const isLast = oi === arr.length - 1;
+            body += wPara(box + wRun(toLetter(oi) + ". " + (opt.text || "(choice)"), checked ? {bold:true, color:ACCENT_COLOR} : {}), {indent:SUB_INDENT, after: isLast ? 100 : 50});
+          });
+        } else if(q.type === "match"){
+          body += wPara(qNum + wRun(q.text || "Match the items below.") + scoreSuffix, {after:100, indent:Q_INDENT});
+          const n = q.pairs.length;
+          if(!q.shuffle || q.shuffle.length !== n) q.shuffle = shuffledIndices(n, q.id + "_" + n);
+          const tableWidth = CONTENT_WIDTH_TWIPS - SUB_INDENT;
+          const colW = Math.floor(tableWidth / 2);
+          const matchRows = q.pairs.map((p, pi) => {
+            if(mode === "teacher"){
+              const leftCell = wPara(wRun("(  " + toLetter(pi) + "  )   " + (pi+1) + ". " + (p.left || "(item)")), {after:0});
+              const rightCell = wPara(wRun(p.right || "(match)", {color:ACCENT_COLOR, bold:true}), {after:0});
+              return [leftCell, rightCell];
+            } else {
+              const rightIdx = q.shuffle[pi];
+              const rightPair = q.pairs[rightIdx];
+              const leftCell = wPara(wRun("(      )   " + (pi+1) + ". " + (p.left || "(item)")), {after:0});
+              const rightCell = wPara(wRun(toLetter(pi) + ". " + (rightPair.right || "(match)")), {after:0});
+              return [leftCell, rightCell];
+            }
+          });
+          body += wTable([colW, tableWidth - colW], matchRows, SUB_INDENT);
+        } else if(q.type === "short"){
+          body += wPara(qNum + wRun(q.text || "(question text)") + scoreSuffix, {after:80, indent:Q_INDENT});
+          if(mode === "teacher" && q.answer){
+            body += wPara(wRun("Model answer: " + q.answer, {bold:true, color:ACCENT_COLOR, size:24}), {indent:SUB_INDENT, after:100});
+          } else {
+            const lines = Math.max(1, q.lines || 3);
+            body += wLinedRows(lines, CONTENT_WIDTH_TWIPS - SUB_INDENT, LINE_ROW_HEIGHT, SUB_INDENT);
+          }
+        } else if(q.type === "writing"){
+          body += wPara(qNum + wRun(q.text || "(writing prompt)") + scoreSuffix, {after:100, indent:Q_INDENT});
+          if(mode === "teacher" && q.notes){
+            body += wPara(wRun("Grading notes: " + q.notes, {bold:true, color:ACCENT_COLOR, size:24}), {indent:SUB_INDENT, after:100});
+          } else if(q.showLines){
+            const lines = Math.max(1, q.lineCount || 12);
+            body += wLinedRows(lines, CONTENT_WIDTH_TWIPS - SUB_INDENT, LINE_ROW_HEIGHT, SUB_INDENT);
+          } else {
+            body += wBlankBox(CONTENT_WIDTH_TWIPS - SUB_INDENT, 3200, SUB_INDENT);
+          }
+        }
+      });
+    });
+
+    const sectPr = "<w:sectPr><w:pgSz w:w=\"" + A4_WIDTH_TWIPS + "\" w:h=\"" + A4_HEIGHT_TWIPS + "\"/>" +
+      "<w:pgMar w:top=\"" + MARGIN_TWIPS + "\" w:right=\"" + MARGIN_TWIPS + "\" w:bottom=\"" + MARGIN_TWIPS + "\" w:left=\"" + MARGIN_TWIPS + "\" w:header=\"720\" w:footer=\"720\" w:gutter=\"0\"/></w:sectPr>";
+
+    return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+      "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body>" +
+      body + sectPr + "</w:body></w:document>";
+  }
+
+  const CONTENT_TYPES_XML = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+    "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+    "<Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/>" +
+    "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+    "<Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/>" +
+    "<Override PartName=\"/word/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml\"/>" +
+    "</Types>";
+
+  const RELS_XML = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+    "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+    "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/>" +
+    "</Relationships>";
+
+  const DOC_RELS_XML = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+    "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+    "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/>" +
+    "</Relationships>";
+
+  const STYLES_XML = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>" +
+    "<w:styles xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">" +
+    "<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii=\"Times New Roman\" w:hAnsi=\"Times New Roman\" w:cs=\"Times New Roman\"/>" +
+    "<w:sz w:val=\"24\"/><w:szCs w:val=\"24\"/></w:rPr></w:rPrDefault></w:docDefaults>" +
+    "<w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"Normal\"><w:name w:val=\"Normal\"/></w:style>" +
+    "</w:styles>";
+
+  async function exportWord(mode){
+    const btn = mode === "teacher" ? document.getElementById("dlToggleTeacher") : document.getElementById("dlToggleStudent");
+    const originalHTML = btn.innerHTML;
+    btn.textContent = "Building file…";
+    btn.disabled = true;
+    try{
+      const zip = new JSZip();
+      zip.file("[Content_Types].xml", CONTENT_TYPES_XML);
+      zip.file("_rels/.rels", RELS_XML);
+      zip.file("word/document.xml", buildDocumentXml(mode));
+      zip.file("word/styles.xml", STYLES_XML);
+      zip.file("word/_rels/document.xml.rels", DOC_RELS_XML);
+      const blob = await zip.generateAsync({
+        type: "blob",
+        mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const namePart = (state.meta.title || "exam").replace(/[^a-z0-9\-_ ]/gi, "").trim().replace(/\s+/g, "_") || "exam";
+      a.href = url;
+      a.download = namePart + (mode === "teacher" ? "_TeacherKey" : "_StudentCopy") + ".docx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch(err){
+      alert("Sorry, the Word file could not be created. Please try again.");
+      console.error(err);
+    } finally {
+      btn.innerHTML = originalHTML;
+      btn.disabled = false;
+    }
+  }
+  const JSPDF_CDN_URL = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+  function ensureJsPDF(){
+    if(window.jspdf && window.jspdf.jsPDF) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = JSPDF_CDN_URL;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error("Could not load the PDF library."));
+      document.head.appendChild(s);
+    });
+  }
+
+  function plainFillText(text, blankSize){
+    const blank = "_".repeat(Math.max(4, Math.round((blankSize || 20) * 0.55)));
+    const t = text || "";
+    if(/\.{3,}/.test(t)) return t.replace(/\.{3,}/g, blank);
+    return (t || "(question text)") + " " + blank;
+  }
+
+  function buildPDFDoc(mode){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const PAGE_W = 595.28, PAGE_H = 841.89, MARGIN = 56.7;
+    const CONTENT_W = PAGE_W - MARGIN * 2;
+    const Q_INDENT = 22;   
+    const SUB_INDENT = 38; 
+    let y = MARGIN;
+
+    function ensure(space){
+      if(y + space > PAGE_H - MARGIN){
+        doc.addPage();
+        y = MARGIN;
+      }
+    }
+    function setF(style, size){
+      doc.setFont("times", style);
+      doc.setFontSize(size);
+    }
+    function wrapped(text, x, width, size, style){
+      setF(style, size);
+      const lines = doc.splitTextToSize(text || "", width);
+      lines.forEach(line => {
+        ensure(size * 1.35);
+        doc.text(line, x, y);
+        y += size * 1.35;
+      });
+    }
+    function drawTable(rows, colWidths, rowH, startX){
+      const x0 = startX == null ? MARGIN : startX;
+      const tableW = colWidths.reduce((a, b) => a + b, 0);
+      ensure(rowH * rows.length);
+      const top = y;
+      doc.setLineWidth(0.75);
+      doc.rect(x0, top, tableW, rowH * rows.length);
+      let xAcc = x0;
+      for(let c = 1; c < colWidths.length; c++){ xAcc += colWidths[c-1]; doc.line(xAcc, top, xAcc, top + rowH * rows.length); }
+      for(let r = 1; r < rows.length; r++){ doc.line(x0, top + rowH * r, x0 + tableW, top + rowH * r); }
+      rows.forEach((row, ri) => {
+        let xC = x0;
+        row.forEach((cell, ci) => {
+          setF(cell.bold ? "bold" : "normal", 11);
+          if(cell.color) doc.setTextColor(cell.color[0], cell.color[1], cell.color[2]);
+          doc.text(String(cell.text), xC + 7, top + rowH * ri + rowH / 2 + 4, { maxWidth: colWidths[ci] - 14 });
+          doc.setTextColor(0, 0, 0);
+          xC += colWidths[ci];
+        });
+      });
+      y = top + rowH * rows.length + 12;
+    }
+    function drawLines(count, indent, width){
+      const x0 = MARGIN + indent;
+      const w = width == null ? (CONTENT_W - indent) : width;
+      for(let i = 0; i < count; i++){
+        ensure(20);
+        doc.setLineWidth(0.75);
+        doc.line(x0, y, x0 + w, y);
+        y += 20;
+      }
+      y += 6;
+    }
+
+    // Title
+    setF("bold", 18);
+    doc.text(state.meta.title || "Untitled Exam", PAGE_W / 2, y, { align: "center" });
+    y += 24;
+    const subBits = [state.meta.subject, state.meta.className].filter(Boolean).join("   •   ");
+    if(subBits){ setF("italic", 11); doc.text(subBits, PAGE_W / 2, y, { align: "center" }); y += 20; }
+    else y += 6;
+
+    // Name / Class / Date / Score box
+    ensure(60);
+    const boxTop = y, halfW = CONTENT_W / 2, rowH0 = 26;
+    doc.setLineWidth(0.75);
+    doc.rect(MARGIN, boxTop, CONTENT_W, rowH0 * 2);
+    doc.line(MARGIN + halfW, boxTop, MARGIN + halfW, boxTop + rowH0 * 2);
+    doc.line(MARGIN, boxTop + rowH0, MARGIN + CONTENT_W, boxTop + rowH0);
+    setF("bold", 11);
+    const lineY1 = boxTop + 19, lineY2 = boxTop + rowH0 + 19;
+    doc.setLineWidth(0.75);
+
+    // Name — blank line fills the rest of its cell
+    doc.text("Name:", MARGIN + 8, boxTop + 17);
+    doc.line(MARGIN + 8 + doc.getTextWidth("Name:") + 8, lineY1, MARGIN + halfW - 10, lineY1);
+
+    // Class — blank line fills the rest of its cell
+    doc.text("Class:", MARGIN + halfW + 8, boxTop + 17);
+    doc.line(MARGIN + halfW + 8 + doc.getTextWidth("Class:") + 8, lineY1, MARGIN + CONTENT_W - 10, lineY1);
+
+    // Date — blank line fills the rest of its cell
+    doc.text("Date:", MARGIN + 8, boxTop + rowH0 + 17);
+    doc.line(MARGIN + 8 + doc.getTextWidth("Date:") + 8, lineY2, MARGIN + halfW - 10, lineY2);
+
+    // Score — a deliberately longer blank line than the others (this is
+    // where a number gets written, so it gets the most room), with the
+    // "/ total" mark placed right after it if a total score was set.
+    doc.text("Score:", MARGIN + halfW + 8, boxTop + rowH0 + 17);
+    const scoreLineStart = MARGIN + halfW + 8 + doc.getTextWidth("Score:") + 8;
+    const scoreLineEnd = MARGIN + CONTENT_W - (state.meta.totalScore ? 46 : 10);
+    doc.line(scoreLineStart, lineY2, scoreLineEnd, lineY2);
+    if(state.meta.totalScore){
+      setF("bold", 11);
+      doc.text("/ " + state.meta.totalScore, scoreLineEnd + 6, boxTop + rowH0 + 17);
+    }
+    y = boxTop + rowH0 * 2 + 16;
+
+    const footBits = [];
+    if(state.meta.teacher) footBits.push("Teacher: " + state.meta.teacher);
+    if(state.meta.duration) footBits.push("Duration: " + state.meta.duration);
+    if(footBits.length){ setF("italic", 10); doc.text(footBits.join("     "), MARGIN, y); y += 20; }
+
+    if(state.sections.length === 0){
+      setF("italic", 11);
+      doc.text("(No parts added yet.)", MARGIN, y);
+    }
+
+    state.sections.forEach((sec, si) => {
+      ensure(28);
+      const romanText = toRoman(si) + ".";
+      setF("bold", 14);
+      doc.text(romanText, MARGIN, y);
+      if(sec.note){
+        const romanW = doc.getTextWidth(romanText);
+        setF(sec.noteBold ? "bold" : "normal", 12);
+        const noteLines = doc.splitTextToSize(sec.note, CONTENT_W - romanW - 6);
+        doc.text(noteLines[0], MARGIN + romanW + 6, y);
+        y += 20;
+        for(let i = 1; i < noteLines.length; i++){ ensure(18); doc.text(noteLines[i], MARGIN, y); y += 18; }
+      } else {
+        y += 22;
+      }
+
+      sec.questions.forEach((q, qi) => {
+        const qNum = (qi + 1) + ". ";
+        const scoreSuffix = q.score ? "   (" + q.score + " pts)" : "";
+        const qX = MARGIN + Q_INDENT;
+        const qW = CONTENT_W - Q_INDENT;
+        const subX = MARGIN + SUB_INDENT;
+        const subW = CONTENT_W - SUB_INDENT;
+
+        if(q.type === "fill"){
+          wrapped(qNum + plainFillText(q.text, q.blankSize) + scoreSuffix, qX, qW, 12, "normal");
+          if(mode === "teacher" && q.answer){
+            ensure(16); setF("bold", 11); doc.setTextColor(31, 66, 56);
+            doc.text("Answer: " + q.answer, subX, y); doc.setTextColor(0, 0, 0); y += 16;
+          }
+          y += 6;
+        } else if(q.type === "mc"){
+          wrapped(qNum + (q.text || "(question text)") + scoreSuffix, qX, qW, 12, "normal");
+          q.options.forEach((opt, oi) => {
+            ensure(17);
+            const isCorrect = mode === "teacher" && opt.correct;
+            doc.setLineWidth(0.75);
+            if(isCorrect){ doc.setFillColor(31, 66, 56); doc.rect(subX, y - 9, 9, 9, "F"); doc.setTextColor(31, 66, 56); setF("bold", 11); }
+            else { doc.rect(subX, y - 9, 9, 9); setF("normal", 11); }
+            doc.text(toLetter(oi) + ". " + (opt.text || "(choice)"), subX + 16, y);
+            doc.setTextColor(0, 0, 0);
+            y += 17;
+          });
+          y += 6;
+        } else if(q.type === "match"){
+          wrapped(qNum + (q.text || "Match the items below.") + scoreSuffix, qX, qW, 12, "normal");
+          const n = q.pairs.length;
+          if(!q.shuffle || q.shuffle.length !== n) q.shuffle = shuffledIndices(n, q.id + "_" + n);
+          const rows = q.pairs.map((p, pi) => {
+            if(mode === "teacher"){
+              return [ { text: "(" + toLetter(pi) + ")  " + (pi+1) + ". " + (p.left || "(item)") }, { text: p.right || "(match)", bold:true, color:[31,66,56] } ];
+            }
+            const rightPair = q.pairs[q.shuffle[pi]];
+            return [ { text: "(     )  " + (pi+1) + ". " + (p.left || "(item)") }, { text: toLetter(pi) + ". " + (rightPair.right || "(match)") } ];
+          });
+          drawTable(rows, [subW * 0.55, subW * 0.45], 24, subX);
+        } else if(q.type === "short"){
+          wrapped(qNum + (q.text || "(question text)") + scoreSuffix, qX, qW, 12, "normal");
+          if(mode === "teacher" && q.answer){
+            ensure(16); setF("bold", 11); doc.setTextColor(31, 66, 56);
+            doc.text("Model answer: " + q.answer, subX, y); doc.setTextColor(0, 0, 0); y += 16;
+          } else {
+            drawLines(Math.max(1, q.lines || 3), SUB_INDENT, subW);
+          }
+        } else if(q.type === "writing"){
+          wrapped(qNum + (q.text || "(writing prompt)") + scoreSuffix, qX, qW, 12, "normal");
+          if(mode === "teacher" && q.notes){
+            ensure(16); setF("bold", 11); doc.setTextColor(31, 66, 56);
+            doc.text("Grading notes: " + q.notes, subX, y); doc.setTextColor(0, 0, 0); y += 16;
+          } else if(q.showLines){
+            drawLines(Math.max(1, q.lineCount || 12), SUB_INDENT, subW);
+          } else {
+            ensure(140);
+            doc.setDrawColor(150); doc.setLineWidth(0.75);
+            doc.rect(subX, y, subW, 130);
+            doc.setDrawColor(0);
+            y += 140;
+          }
+        }
+      });
+    });
+
+    const totalPages = doc.internal.getNumberOfPages();
+    for(let i = 1; i <= totalPages; i++){
+      doc.setPage(i);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(140);
+      doc.text("Page " + i + " of " + totalPages, PAGE_W - MARGIN, PAGE_H - 28, { align: "right" });
+      doc.setTextColor(0, 0, 0);
+    }
+    return doc;
+  }
+
+  async function exportPDF(mode){
+    const btn = mode === "teacher" ? document.getElementById("dlToggleTeacher") : document.getElementById("dlToggleStudent");
+    const originalHTML = btn.innerHTML;
+    btn.textContent = "Building PDF…";
+    btn.disabled = true;
+    try{
+      await ensureJsPDF();
+      const doc = buildPDFDoc(mode);
+      const namePart = (state.meta.title || "exam").replace(/[^a-z0-9\-_ ]/gi, "").trim().replace(/\s+/g, "_") || "exam";
+      doc.save(namePart + (mode === "teacher" ? "_TeacherKey" : "_StudentCopy") + ".pdf");
+    } catch(err){
+      alert("Sorry, the PDF could not be created. Please try again.");
+      console.error(err);
+    } finally {
+      btn.innerHTML = originalHTML;
+      btn.disabled = false;
+    }
+  }
+  function setupDownloadDropdown(toggleId, menuId){
+    const toggleBtn = document.getElementById(toggleId);
+    const menu = document.getElementById(menuId);
+    if(!toggleBtn || !menu) return;
+    toggleBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const willOpen = menu.classList.contains("hidden");
+      document.querySelectorAll(".dl-dropdown").forEach(m => m.classList.add("hidden"));
+      if(willOpen) menu.classList.remove("hidden");
+    });
+    menu.addEventListener("click", (e) => {
+      const t = e.target.closest("[data-act]");
+      if(!t) return;
+      const mode = t.dataset.mode;
+      if(t.dataset.act === "dl-word") exportWord(mode);
+      else if(t.dataset.act === "dl-pdf") exportPDF(mode);
+      menu.classList.add("hidden");
+    });
+  }
+  setupDownloadDropdown("dlToggleTeacher", "dlMenuTeacher");
+  setupDownloadDropdown("dlToggleStudent", "dlMenuStudent");
+  document.addEventListener("click", (e) => {
+    document.querySelectorAll(".dl-dropdown").forEach(m => {
+      if(!m.contains(e.target)) m.classList.add("hidden");
+    });
+  });
+
+  // ---------- Seed with one example ----------
+  function seedExample(){
+    state.meta = {
+      title: "Sample Quiz — General Knowledge",
+      subject: "General Knowledge",
+      className: "Grade 6",
+      teacher: "",
+      date: "",
+      duration: "30 minutes",
+      totalScore: "20"
+    };
+    const s1 = newSection("fill");
+    s1.note = "Basic facts";
+    const q1 = newQuestion("fill"); q1.text = "The sun rises in the ....."; q1.answer = "East"; q1.score = "5"; q1.blankSize = 10;
+    s1.questions.push(q1);
+
+    const s2 = newSection("mc");
+    s2.note = "Choose the correct answer by putting a check in the box.";
+    const q2 = newQuestion("mc");
+    q2.text = "Which of these is a fruit?";
+    q2.options = [{text:"Carrot",correct:false},{text:"Apple",correct:true},{text:"Potato",correct:false}];
+    q2.score = "5";
+    s2.questions.push(q2);
+
+    const s3 = newSection("match");
+    s3.note = "Animals and the sounds they make";
+    const q3 = newQuestion("match");
+    q3.pairs = [{left:"Dog", right:"Bark"}, {left:"Cat", right:"Meow"}, {left:"Cow", right:"Moo"}];
+    q3.score = "10";
+    s3.questions.push(q3);
+
+    state.sections = [s1, s2, s3];
+    activeSectionId = s1.id;
+  }
+
+  const restoredFromStorage = loadState();
+  if(!restoredFromStorage){ seedExample(); }
+  initDelegatedEvents();
+  const clearBtn = document.getElementById("clearDataBtn");
+  if(clearBtn) clearBtn.addEventListener("click", clearAllData);
+  const clearQuestionsBtn = document.getElementById("clearQuestionsBtn");
+  if(clearQuestionsBtn) clearQuestionsBtn.addEventListener("click", clearQuestionsOnly);
+
+  const menuToggleBtn = document.getElementById("menuToggleBtn");
+  const menuDropdown = document.getElementById("menuDropdown");
+  if(menuToggleBtn && menuDropdown){
+    menuToggleBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      menuDropdown.classList.toggle("hidden");
+    });
+    document.addEventListener("click", (e) => {
+      if(!menuDropdown.classList.contains("hidden") && !menuDropdown.contains(e.target) && e.target !== menuToggleBtn){
+        menuDropdown.classList.add("hidden");
+      }
+    });
+    menuDropdown.addEventListener("click", (e) => {
+      const guideBtn = e.target.closest('[data-act="menu-guide"]');
+      if(guideBtn){
+        showGuide = !showGuide;
+        renderBuilder();
+      }
+      menuDropdown.classList.add("hidden");
+    });
+  }
+
+  renderBuilder();
+  renderPreview();
+  updateHeaderHeightVar();
+})();
+</script>
+</body>
+</html>
