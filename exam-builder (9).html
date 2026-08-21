@@ -535,8 +535,8 @@
     writing: { label: "Writing / Essay",   desc: "A prompt with ruled lines (like paper) for a longer answer" }
   };
   const TYPE_GROUPS = [
-    { id: "objective", label: "Short Answer / Multiple Choice / Matching", types: ["short", "mc", "match"] },
-    { id: "writing",   label: "Writing / Fill in the Blank",               types: ["writing", "fill"] }
+    { id: "objective", label: "Fill in the Blank / Multiple Choice / Matching", types: ["fill", "mc", "match"] },
+    { id: "writing",   label: "Writing / Essay / Short Answer",                 types: ["writing", "short"] }
   ];
   const BLANK_SIZE_OPTIONS = [10, 15, 20, 25, 30];
 
@@ -1447,9 +1447,9 @@
   function wBlankBox(widthTwips, heightTwips, indentTwips){
     const grid = "<w:gridCol w:w=\"" + widthTwips + "\"/>";
     const cellPara = wPara(wRun(" "), {after:0});
-    const borderSide = () => "<w:val=\"single\" w:sz=\"6\" w:space=\"0\" w:color=\"999999\"/>";
+    const borderSide = () => "w:val=\"single\" w:sz=\"6\" w:space=\"0\" w:color=\"999999\"";
     const cellXml = "<w:tc><w:tcPr><w:tcW w:w=\"" + widthTwips + "\" w:type=\"dxa\"/>" +
-      "<w:tcBorders><w:top " + borderSide() + "<w:left " + borderSide() + "<w:bottom " + borderSide() + "<w:right " + borderSide() + "</w:tcBorders>" +
+      "<w:tcBorders><w:top " + borderSide() + "/><w:left " + borderSide() + "/><w:bottom " + borderSide() + "/><w:right " + borderSide() + "/></w:tcBorders>" +
       "<w:vAlign w:val=\"top\"/></w:tcPr>" + cellPara + "</w:tc>";
     const tblInd = indentTwips ? "<w:tblInd w:w=\"" + indentTwips + "\" w:type=\"dxa\"/>" : "";
     return "<w:tbl><w:tblPr><w:tblW w:w=\"" + widthTwips + "\" w:type=\"dxa\"/>" + tblInd + "</w:tblPr><w:tblGrid>" + grid + "</w:tblGrid>" +
