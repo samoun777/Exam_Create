@@ -21,8 +21,12 @@
     --serif: "Times New Roman", Times, serif;
   }
   *{box-sizing:border-box;}
-  body{
+  html, body{
     margin:0;
+    overflow-x:hidden;
+    max-width:100%;
+  }
+  body{
     font-family:var(--sans);
     background:var(--panel);
     color:var(--ink);
@@ -45,7 +49,7 @@
   .app-header h1{font-family:var(--sans);font-size:22px;margin:0;font-weight:800;letter-spacing:.3px;}
   .app-header .sub{font-size:13px;opacity:.8;}
   .app-header .khmer{font-size:13px;opacity:.75;}
-  .app-header-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .app-header-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-left:auto;justify-content:flex-end;}
   .menu-wrap{position:relative;}
   .menu-dropdown{
     position:absolute;top:calc(100% + 8px);right:0;
@@ -993,6 +997,7 @@
         if(collapsedQuestions.has(qid)) collapsedQuestions.delete(qid);
         else collapsedQuestions.add(qid);
         renderBuilder();
+        updatePageScale();
         return;
       } else if(act === "q-up" || act === "q-down"){
         const sec = findSection(t.dataset.sec);
