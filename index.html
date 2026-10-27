@@ -159,6 +159,7 @@
     margin:10px 0 4px;
   }
   label.first{margin-top:0;}
+  label.ans-label{color:var(--danger);}
   input[type=text], input[type=number], textarea, select{
     width:100%;
     max-width:100%;
@@ -203,6 +204,14 @@
   .btn-danger:hover{background:#fbeae5;}
   .btn-small{padding:5px 9px;font-size:12px;}
   .btn-icon{padding:5px 8px;font-size:13px;line-height:1;}
+
+  /* File-name popup shown before a download */
+  .fn-overlay{position:fixed;inset:0;background:rgba(20,30,28,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:1000;}
+  .fn-dialog{background:var(--paper);border-radius:var(--radius);width:100%;max-width:400px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.2);}
+  .fn-dialog h3{margin:0 0 12px;font-size:16px;color:var(--accent-dark);}
+  .fn-input-row{display:flex;align-items:center;gap:6px;}
+  .fn-ext{font-size:13px;color:var(--muted);font-weight:600;}
+  .fn-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px;}
 
   .type-picker{
     display:grid;
@@ -377,7 +386,7 @@
   }
   .page-sheet .exam-title{font-size:20px;font-weight:700;text-align:center;margin:0 0 2px;}
   .page-sheet .exam-sub{font-size:13px;text-align:center;color:#4c554f;margin-bottom:14px;}
-  table.examhead{width:100%;border-collapse:collapse;margin:14px 0 22px;}
+  table.examhead{width:100%;border-collapse:collapse;margin:0 0 20px;}
   table.examhead td{border:1px solid #333;padding:9px 12px;font-size:13px;}
   .flabel{font-weight:700;margin-right:6px;}
   .page-sheet hr{border:none;border-top:1px solid #cfc9b6;margin:16px 0;}
@@ -545,11 +554,11 @@
 <script>
 (function(){
   const TYPE_INFO = {
-    fill:    { label: "Fill in the Blank", desc: "Sentence with a blank ( ..... ) to complete" },
-    mc:      { label: "Multiple Choice",   desc: "Question with A, B, C, D choices" },
-    match:   { label: "Matching",          desc: "Match items on the left to items on the right" },
-    short:   { label: "Short Answer",      desc: "Open question with a few blank lines to write on" },
-    writing: { label: "Writing / Essay",   desc: "A prompt with ruled lines (like paper) for a longer answer" }
+    fill:    { label: "Fill in the Blank", desc: "Complete the sentence" },
+    mc:      { label: "Multiple Choice",   desc: "A, B, C, D choices" },
+    match:   { label: "Matching",          desc: "Match left to right" },
+    short:   { label: "Short Answer",      desc: "Answer on a few lines" },
+    writing: { label: "Writing / Essay",   desc: "Longer written answer" }
   };
   const TYPE_GROUPS = [
     { id: "objective", label: "Fill in the Blank / Multiple Choice / Matching", types: ["fill", "mc", "match"] },
@@ -648,7 +657,7 @@
     if(type === "fill"){ base.answer = ""; base.blankSize = 20; }
     if(type === "mc"){ base.options = [ {text:"", correct:true}, {text:"", correct:false} ]; }
     if(type === "match"){ base.pairs = [ {left:"", right:""}, {left:"", right:""} ]; base.shuffle = null; }
-    if(type === "short"){ base.answer = ""; base.lines = 3; }
+    if(type === "short"){ base.answer = ""; base.lines = 1; }
     if(type === "writing"){ base.notes = ""; base.showLines = true; base.lineCount = 12; }
     return base;
   }
@@ -709,7 +718,7 @@
     // Part type picker — grouped, click a group to reveal its part types
     html += `<div class="card">
       <h2>2. Add a part</h2>
-      <div class="hint" style="margin-bottom:8px;">Pick a group, then choose the type. Every question inside that part will be this type. On the exam, the part only shows as a plain heading — I, II, III...</div>
+      <div class="hint" style="margin-bottom:8px;">Pick a group, then a type.</div>
       ${TYPE_GROUPS.map(g => `
         <div class="type-group">
           <button class="type-group-head ${groupOpen[g.id] ? "open" : ""}" data-act="toggle-group" data-group="${g.id}">
@@ -736,7 +745,7 @@
       if(!activeSectionId || !state.sections.find(s => s.id === activeSectionId)){
         activeSectionId = state.sections[0].id;
       }
-      html += `<div class="part-tabs-hint">Drag a tab to reorder parts (or use the ↑ ↓ buttons below — easier on a phone).</div>`;
+      html += `<div class="part-tabs-hint">Drag tabs or use ↑ ↓ to reorder.</div>`;
       html += `<div class="part-tabs">`;
       state.sections.forEach((sec, si) => {
         html += `<button class="part-tab ${sec.id === activeSectionId ? "active" : ""}" draggable="true" data-act="tab-select" data-id="${sec.id}">
@@ -760,7 +769,7 @@
           <div class="note-box">
             <div class="note-box-head">
               <button class="btn-bold-toggle ${sec.noteBold ? "active" : ""}" data-act="sec-notebold" data-id="${sec.id}" title="Make this text bold on the exam" type="button">B</button>
-              <label class="first" style="margin:0;">Instructions for this part (optional — shown under the heading, e.g. "Choose the correct answer" or "Match the items below")</label>
+              <label class="first" style="margin:0;">Instructions (optional)</label>
             </div>
             <textarea data-act="sec-note" data-id="${sec.id}" placeholder="e.g. Choose the correct answer by putting a check in the box." style="${sec.noteBold ? "font-weight:700;" : ""}">${escapeHtml(sec.note)}</textarea>
           </div>`;
@@ -819,25 +828,24 @@
 
     if(q.type === "fill"){
       const blankCount = (q.text.match(/\.{3,}/g) || []).length;
-      inner += `<label class="first">Question text — write ..... anywhere a blank should go (you can use more than one)</label>
+      inner += `<label class="first">Question text (use ..... for blanks)</label>
       <textarea data-act="q-text" data-sec="${sec.id}" data-id="${q.id}" placeholder="e.g. I go to ..... school ..... this weekend.">${escapeHtml(q.text)}</textarea>
-      <div class="hint">You can put several blanks in one sentence, e.g. <em>"I go to ..... school ..... this weekend."</em> — it's optional, use as many or as few as you need.</div>
       <div class="row2">
         <div>
-          <label>Blank size (space to leave for each answer)</label>
+          <label>Blank size</label>
           <select data-act="q-blanksize" data-sec="${sec.id}" data-id="${q.id}">
             ${BLANK_SIZE_OPTIONS.map(n => `<option value="${n}" ${+q.blankSize === n ? "selected" : ""}>${n} characters ${n<=10?"(short)":n>=30?"(long)":""}</option>`).join("")}
           </select>
         </div>
         <div>
-          <label>${blankCount > 1 ? `Correct answers — this question has ${blankCount} blanks, enter ${blankCount} answers separated by commas, in order` : "Correct answer (for the teacher's answer key)"}</label>
+          <label class="ans-label">${blankCount > 1 ? `Answers (${blankCount}, comma-separated)` : "Answer"}</label>
           <input type="text" data-act="q-answer" data-sec="${sec.id}" data-id="${q.id}" value="${escapeHtml(q.answer)}" placeholder="${blankCount > 1 ? "e.g. school, tomorrow" : "e.g. Phnom Penh"}">
         </div>
       </div>`;
     } else if(q.type === "mc"){
       inner += `<label class="first">Question text</label>
       <textarea data-act="q-text" data-sec="${sec.id}" data-id="${q.id}" placeholder="e.g. Which planet is closest to the sun?">${escapeHtml(q.text)}</textarea>
-      <label>Answer choices — tick the correct one</label>`;
+      <label class="ans-label">Choices (tick correct)</label>`;
       q.options.forEach((opt, oi) => {
         inner += `<div class="opt-row">
           <span class="opt-letter">${toLetter(oi)}</span>
@@ -850,9 +858,9 @@
       });
       inner += `<button class="btn-small btn-ghost" data-act="opt-add" data-sec="${sec.id}" data-id="${q.id}">${ICON.plus} Add choice</button>`;
     } else if(q.type === "match"){
-      inner += `<label class="first">Instruction shown above (optional — e.g. "Match each word to its meaning")</label>
+      inner += `<label class="first">Instruction (optional)</label>
       <textarea data-act="q-text" data-sec="${sec.id}" data-id="${q.id}" placeholder="e.g. Match the term on the left to its meaning on the right.">${escapeHtml(q.text)}</textarea>
-      <label>Pairs — left item and its correct match on the right</label>`;
+      <label class="ans-label">Pairs</label>`;
       q.pairs.forEach((p, pi) => {
         inner += `<div class="match-row">
           <input type="text" data-act="pair-left" data-sec="${sec.id}" data-id="${q.id}" data-pi="${pi}" value="${escapeHtml(p.left)}" placeholder="Item ${pi+1}">
@@ -861,31 +869,31 @@
         </div>`;
       });
       inner += `<button class="btn-small btn-ghost" data-act="pair-add" data-sec="${sec.id}" data-id="${q.id}">${ICON.plus} Add pair</button>
-      <div class="hint">On the printed exam, the right-hand column is shuffled automatically so it's not a giveaway.</div>`;
+      <div class="hint">Right column is shuffled on the exam.</div>`;
     } else if(q.type === "short"){
       inner += `<label class="first">Question text</label>
       <textarea data-act="q-text" data-sec="${sec.id}" data-id="${q.id}" placeholder="e.g. Explain why plants need sunlight.">${escapeHtml(q.text)}</textarea>
-      <label>Model answer (for the teacher's answer key, optional)</label>
+      <label class="ans-label">Model answer (optional)</label>
       <textarea data-act="q-answer" data-sec="${sec.id}" data-id="${q.id}" placeholder="Notes on what a good answer includes...">${escapeHtml(q.answer)}</textarea>
-      <label>Blank lines to leave for the student's answer</label>
+      <label class="ans-label">Answer lines</label>
       <input type="number" min="1" max="10" data-act="q-lines" data-sec="${sec.id}" data-id="${q.id}" value="${q.lines}" style="max-width:90px;">`;
     } else if(q.type === "writing"){
-      inner += `<label class="first">Writing prompt / topic</label>
+      inner += `<label class="first">Writing prompt</label>
       <textarea data-act="q-text" data-sec="${sec.id}" data-id="${q.id}" placeholder="e.g. Write a short paragraph about your favorite season.">${escapeHtml(q.text)}</textarea>
       <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--ink);margin-top:12px;">
         <input type="checkbox" data-act="q-showlines" data-sec="${sec.id}" data-id="${q.id}" ${q.showLines ? "checked" : ""} style="width:auto;">
-        Add ruled lines (like paper) for the student to write on
+        Add ruled lines
       </label>
       ${q.showLines
-        ? `<label>How many lines</label>
+        ? `<label>Lines</label>
            <input type="number" min="1" max="30" data-act="q-linecount" data-sec="${sec.id}" data-id="${q.id}" value="${q.lineCount}" style="max-width:100px;">`
-        : `<div class="hint">No lines — students get an open blank space instead of ruled lines.</div>`
+        : `<div class="hint">No lines — blank box instead.</div>`
       }
-      <label>Grading notes / rubric (optional — shown only on the teacher's copy)</label>
+      <label class="ans-label">Grading notes (optional)</label>
       <textarea data-act="q-notes" data-sec="${sec.id}" data-id="${q.id}" placeholder="Notes on what a good answer should include...">${escapeHtml(q.notes)}</textarea>`;
     }
 
-    inner += `<label>Score for this question (optional)</label>
+    inner += `<label>Score (optional)</label>
       <input type="number" min="0" data-act="q-score" data-sec="${sec.id}" data-id="${q.id}" value="${escapeHtml(q.score)}" style="max-width:100px;">
     </div>`;
     return inner;
@@ -1095,10 +1103,6 @@
 
   function buildHeaderBlock(){
     let h = "";
-    h += `<div class="exam-title">${escapeHtml(state.meta.title) || "Untitled Exam"}</div>`;
-    const subBits = [state.meta.subject, state.meta.className].filter(Boolean).join(" &nbsp;•&nbsp; ");
-    if(subBits) h += `<div class="exam-sub">${subBits}</div>`;
-
     const scoreCell = `<span class="flabel">Score:</span><span class="blankline" style="width:70px;">&nbsp;</span>${state.meta.totalScore ? " / " + escapeHtml(state.meta.totalScore) : ""}`;
     h += `<table class="examhead"><tbody>
       <tr>
@@ -1111,11 +1115,15 @@
       </tr>
     </tbody></table>`;
 
+    h += `<div class="exam-title">${escapeHtml(state.meta.title) || "Untitled Exam"}</div>`;
+    const subBits = [state.meta.subject, state.meta.className].filter(Boolean).join(" &nbsp;•&nbsp; ");
+    if(subBits) h += `<div class="exam-sub">${subBits}</div>`;
+
     if(state.meta.teacher || state.meta.duration){
       const bits = [];
       if(state.meta.teacher) bits.push("Teacher: " + escapeHtml(state.meta.teacher));
       if(state.meta.duration) bits.push("Duration: " + escapeHtml(state.meta.duration));
-      h += `<div style="font-size:12.5px;color:#444;margin:-12px 0 16px;">${bits.join(" &nbsp;|&nbsp; ")}</div>`;
+      h += `<div style="font-size:12.5px;color:#444;text-align:center;margin:-8px 0 18px;">${bits.join(" &nbsp;|&nbsp; ")}</div>`;
     }
     return h;
   }
@@ -1201,7 +1209,7 @@
         const scoreTag = q.score ? `<span class="score-tag">(${escapeHtml(q.score)} pts)</span>` : "";
 
         if(q.type === "short" && !(mode === "teacher" && q.answer)){
-          const lines = Math.max(1, q.lines || 3);
+          const lines = Math.max(1, q.lines || 1);
           pushLinedQuestionBlocks(blocks, qi, escapeHtml(q.text) || "(question text)", scoreTag, lines);
           return;
         }
@@ -1490,10 +1498,6 @@
   function buildDocumentXml(mode){
     let body = "";
 
-    body += wPara(wRun(state.meta.title || "Untitled Exam", {bold:true, size:36}), {align:"center", after:60});
-    const subBits = [state.meta.subject, state.meta.className].filter(Boolean).join("   •   ");
-    if(subBits) body += wPara(wRun(subBits, {italic:true, size:24, color:GRAY_COLOR}), {align:"center", after:120});
-
     // Name / Class / Date / Score box grid
     const half = Math.floor(CONTENT_WIDTH_TWIPS / 2);
     const scoreRun = wRun("Score:", {bold:true}) + wBlank(8) + (state.meta.totalScore ? wRun(" / " + state.meta.totalScore) : "");
@@ -1503,10 +1507,14 @@
     ]);
     body += wPara(wRun(" "), {after:80});
 
+    body += wPara(wRun(state.meta.title || "Untitled Exam", {bold:true, size:36}), {align:"center", after:60});
+    const subBits = [state.meta.subject, state.meta.className].filter(Boolean).join("   •   ");
+    if(subBits) body += wPara(wRun(subBits, {italic:true, size:24, color:GRAY_COLOR}), {align:"center", after:120});
+
     const footBits = [];
     if(state.meta.teacher) footBits.push("Teacher: " + state.meta.teacher);
     if(state.meta.duration) footBits.push("Duration: " + state.meta.duration);
-    if(footBits.length) body += wPara(wRun(footBits.join("     "), {italic:true, size:24, color:GRAY_COLOR}), {after:140});
+    if(footBits.length) body += wPara(wRun(footBits.join("     "), {italic:true, size:24, color:GRAY_COLOR}), {align:"center", after:140});
 
     if(state.sections.length === 0){
       body += wPara(wRun("(No parts added yet.)", {italic:true, color:GRAY_COLOR}));
@@ -1559,7 +1567,7 @@
           if(mode === "teacher" && q.answer){
             body += wPara(wRun("Model answer: " + q.answer, {bold:true, color:ACCENT_COLOR, size:24}), {indent:SUB_INDENT, after:100});
           } else {
-            const lines = Math.max(1, q.lines || 3);
+            const lines = Math.max(1, q.lines || 1);
             body += wLinedRows(lines, CONTENT_WIDTH_TWIPS - SUB_INDENT, LINE_ROW_HEIGHT, SUB_INDENT);
           }
         } else if(q.type === "writing"){
@@ -1609,7 +1617,59 @@
     "<w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"Normal\"><w:name w:val=\"Normal\"/></w:style>" +
     "</w:styles>";
 
+  // Default file name base, e.g. "Sample_Quiz_TeacherKey"
+  function defaultFileBase(mode){
+    const namePart = (state.meta.title || "exam").replace(/[^a-z0-9\-_ ]/gi, "").trim().replace(/\s+/g, "_") || "exam";
+    return namePart + (mode === "teacher" ? "_TeacherKey" : "_StudentCopy");
+  }
+
+  // Popup asking for the file name. Resolves to the full name with
+  // extension, or null if the user cancels.
+  function askFileName(defaultBase, ext){
+    return new Promise(resolve => {
+      const overlay = document.createElement("div");
+      overlay.className = "fn-overlay";
+      overlay.innerHTML = `<div class="fn-dialog" role="dialog" aria-modal="true">
+        <h3>File name</h3>
+        <div class="fn-input-row">
+          <input type="text" class="fn-input" value="${escapeHtml(defaultBase)}">
+          <span class="fn-ext">${ext}</span>
+        </div>
+        <div class="fn-actions">
+          <button type="button" class="btn-ghost fn-cancel">Cancel</button>
+          <button type="button" class="btn-primary fn-ok">Download</button>
+        </div>
+      </div>`;
+      document.body.appendChild(overlay);
+      const input = overlay.querySelector(".fn-input");
+      input.focus();
+      input.select();
+
+      function close(result){
+        document.removeEventListener("keydown", onKey);
+        overlay.remove();
+        resolve(result);
+      }
+      function confirm(){
+        // Strip characters that aren't allowed in file names
+        let name = input.value.replace(/[\\/:*?"<>|]/g, "").trim();
+        if(name.toLowerCase().endsWith(ext)) name = name.slice(0, -ext.length).trim();
+        close((name || defaultBase) + ext);
+      }
+      function onKey(e){
+        if(e.key === "Escape") close(null);
+        else if(e.key === "Enter") confirm();
+      }
+      document.addEventListener("keydown", onKey);
+      overlay.querySelector(".fn-ok").addEventListener("click", confirm);
+      overlay.querySelector(".fn-cancel").addEventListener("click", () => close(null));
+      overlay.addEventListener("click", e => { if(e.target === overlay) close(null); });
+    });
+  }
+
   async function exportWord(mode){
+    const fileName = await askFileName(defaultFileBase(mode), ".docx");
+    if(!fileName) return;
     const btn = mode === "teacher" ? document.getElementById("dlToggleTeacher") : document.getElementById("dlToggleStudent");
     const originalHTML = btn.innerHTML;
     btn.textContent = "Building file…";
@@ -1627,9 +1687,8 @@
       });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      const namePart = (state.meta.title || "exam").replace(/[^a-z0-9\-_ ]/gi, "").trim().replace(/\s+/g, "_") || "exam";
       a.href = url;
-      a.download = namePart + (mode === "teacher" ? "_TeacherKey" : "_StudentCopy") + ".docx";
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -1723,14 +1782,6 @@
       y += 6;
     }
 
-    // Title
-    setF("bold", 18);
-    doc.text(state.meta.title || "Untitled Exam", PAGE_W / 2, y, { align: "center" });
-    y += 24;
-    const subBits = [state.meta.subject, state.meta.className].filter(Boolean).join("   •   ");
-    if(subBits){ setF("italic", 11); doc.text(subBits, PAGE_W / 2, y, { align: "center" }); y += 20; }
-    else y += 6;
-
     // Name / Class / Date / Score box
     ensure(60);
     const boxTop = y, halfW = CONTENT_W / 2, rowH0 = 26;
@@ -1765,12 +1816,20 @@
       setF("bold", 11);
       doc.text("/ " + state.meta.totalScore, scoreLineEnd + 6, boxTop + rowH0 + 17);
     }
-    y = boxTop + rowH0 * 2 + 16;
+    y = boxTop + rowH0 * 2 + 28;
+
+    // Title
+    setF("bold", 18);
+    doc.text(state.meta.title || "Untitled Exam", PAGE_W / 2, y, { align: "center" });
+    y += 20;
+    const subBits = [state.meta.subject, state.meta.className].filter(Boolean).join("   •   ");
+    if(subBits){ setF("italic", 11); doc.text(subBits, PAGE_W / 2, y, { align: "center" }); y += 18; }
 
     const footBits = [];
     if(state.meta.teacher) footBits.push("Teacher: " + state.meta.teacher);
     if(state.meta.duration) footBits.push("Duration: " + state.meta.duration);
-    if(footBits.length){ setF("italic", 10); doc.text(footBits.join("     "), MARGIN, y); y += 20; }
+    if(footBits.length){ setF("italic", 10); doc.text(footBits.join("     "), PAGE_W / 2, y, { align: "center" }); y += 20; }
+    else y += 6;
 
     if(state.sections.length === 0){
       setF("italic", 11);
@@ -1839,7 +1898,7 @@
             ensure(16); setF("bold", 11); doc.setTextColor(31, 66, 56);
             doc.text("Model answer: " + q.answer, subX, y); doc.setTextColor(0, 0, 0); y += 16;
           } else {
-            drawLines(Math.max(1, q.lines || 3), SUB_INDENT, subW);
+            drawLines(Math.max(1, q.lines || 1), SUB_INDENT, subW);
           }
         } else if(q.type === "writing"){
           wrapped(qNum + (q.text || "(writing prompt)") + scoreSuffix, qX, qW, 12, "normal");
@@ -1870,6 +1929,8 @@
   }
 
   async function exportPDF(mode){
+    const fileName = await askFileName(defaultFileBase(mode), ".pdf");
+    if(!fileName) return;
     const btn = mode === "teacher" ? document.getElementById("dlToggleTeacher") : document.getElementById("dlToggleStudent");
     const originalHTML = btn.innerHTML;
     btn.textContent = "Building PDF…";
@@ -1877,8 +1938,7 @@
     try{
       await ensureJsPDF();
       const doc = buildPDFDoc(mode);
-      const namePart = (state.meta.title || "exam").replace(/[^a-z0-9\-_ ]/gi, "").trim().replace(/\s+/g, "_") || "exam";
-      doc.save(namePart + (mode === "teacher" ? "_TeacherKey" : "_StudentCopy") + ".pdf");
+      doc.save(fileName);
     } catch(err){
       alert("Sorry, the PDF could not be created. Please try again.");
       console.error(err);
